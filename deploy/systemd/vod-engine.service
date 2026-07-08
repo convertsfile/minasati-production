@@ -1,0 +1,62 @@
+[Unit]
+Description=VOD Encoding Engine v2 — Production
+Documentation=https://github.com/a_ashraf_tech/vod-engine
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vod-engine
+Group=vod-engine
+
+# Working directory
+WorkingDirectory=/var/lib/vod-engine
+
+# === Binary & Environment ===
+EnvironmentFile=-/etc/default/vod-engine
+ExecStart=/usr/local/bin/vod-engine
+ExecReload=/bin/kill -HUP $MAINPID
+
+# === Restart Policy ===
+Restart=always
+RestartSec=10
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+# === CPU Resource Limits (FFMPEG-02) ===
+CPUQuota=400%
+CPUAccounting=true
+
+# === Memory Resource Limits (OPS-10) ===
+MemoryMax=10G
+MemoryHigh=8G
+MemoryAccounting=true
+
+# === I/O Resource Limits (LINUX-02) ===
+IOWeight=50
+IOAccounting=true
+
+# === Process Limits (LINUX-02) ===
+LimitNOFILE=65536
+LimitNPROC=64
+TasksMax=128
+
+# === OOM Protection (LINUX-01) ===
+OOMScoreAdjust=-500
+
+# === Security Hardening ===
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE CAP_SYS_RESOURCE
+
+# === Filesystem Access ===
+ReadWritePaths=/var/lib/vod-engine /var/tmp/vod-engine /var/log/vod-engine
+
+# === Logging ===
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,387 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "title": "VOD Encoding Server",
+  "uid": "vod-encoding-server",
+  "version": 1,
+  "schemaVersion": 36,
+  "tags": ["vod", "encoding", "infrastructure"],
+  "timezone": "browser",
+  "editable": true,
+  "refresh": "15s",
+  "panels": [
+    {
+      "title": "CPU Load (1m/5m/15m)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "targets": [
+        { "expr": "node_load1", "legendFormat": "1m" },
+        { "expr": "node_load5", "legendFormat": "5m" },
+        { "expr": "node_load15", "legendFormat": "15m" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 4.5 },
+              { "color": "red", "value": 5.5 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "CPU Usage %",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "targets": [
+        {
+          "expr": "100 - (avg by(instance)(rate(node_cpu_seconds_total{mode=\"idle\"}[1m])) * 100)",
+          "legendFormat": "CPU Usage"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 75 },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Memory Available",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 4, "x": 16, "y": 0 },
+      "targets": [
+        { "expr": "node_memory_MemAvailable_bytes" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 2147483648 },
+              { "color": "red", "value": 805306368 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Memory Breakdown",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+          "legendFormat": "Used"
+        },
+        {
+          "expr": "node_memory_MemAvailable_bytes",
+          "legendFormat": "Available"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes"
+        }
+      },
+      "stack": true
+    },
+    {
+      "title": "Swap Usage",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 4, "x": 8, "y": 8 },
+      "targets": [
+        {
+          "expr": "node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes",
+          "legendFormat": "Swap Used"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1073741824 },
+              { "color": "red", "value": 2147483648 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Disk Usage /var/tmp",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 4, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "node_filesystem_avail_bytes{mountpoint=\"/var/tmp\"}" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10737418240 },
+              { "color": "red", "value": 5368709120 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Disk I/O Utilization",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "targets": [
+        { "expr": "rate(node_disk_io_time_seconds_total[1m])", "legendFormat": "Disk I/O" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    {
+      "title": "NVMe Health",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 4, "x": 0, "y": 16 },
+      "targets": [
+        { "expr": "node_nvme_percentage_used", "legendFormat": "Wear %" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 80 },
+              { "color": "red", "value": 95 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "NVMe Temperature",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 4, "x": 4, "y": 16 },
+      "targets": [
+        { "expr": "node_nvme_temperature_celsius", "legendFormat": "Temp" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 60 },
+              { "color": "red", "value": 70 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Network Throughput",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
+      "targets": [
+        {
+          "expr": "rate(node_network_transmit_bytes_total[1m]) * 8",
+          "legendFormat": "Out"
+        },
+        {
+          "expr": "rate(node_network_receive_bytes_total[1m]) * 8",
+          "legendFormat": "In"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps"
+        }
+      }
+    },
+    {
+      "title": "Active Jobs",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 16, "y": 16 },
+      "targets": [
+        { "expr": "vod_engine_active_jobs", "legendFormat": "Active" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 2 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Pending Jobs",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 16, "y": 22 },
+      "targets": [
+        { "expr": "vod_engine_pending_jobs", "legendFormat": "Pending" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 30 },
+              { "color": "red", "value": 50 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Dead-Letter Jobs",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 4, "x": 20, "y": 22 },
+      "targets": [
+        { "expr": "vod_engine_dead_letter_jobs", "legendFormat": "Dead" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 3 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Queue Duration",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 24 },
+      "targets": [
+        { "expr": "vod_engine_queue_oldest_age_seconds", "legendFormat": "Age" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1800 },
+              { "color": "red", "value": 3600 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Encode Duration (p50/p95/p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 4, "y": 24 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(vod_engine_encoding_duration_seconds_bucket[5m])) by (le, quality))",
+          "legendFormat": "p50 - {{quality}}"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(vod_engine_encoding_duration_seconds_bucket[5m])) by (le, quality))",
+          "legendFormat": "p95 - {{quality}}"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(vod_engine_encoding_duration_seconds_bucket[5m])) by (le, quality))",
+          "legendFormat": "p99 - {{quality}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "title": "Job Success Rate",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 4, "x": 12, "y": 24 },
+      "targets": [
+        {
+          "expr": "rate(vod_engine_jobs_processed_total{status=\"success\"}[1h]) / (rate(vod_engine_jobs_processed_total{status=\"failed\"}[1h]) + rate(vod_engine_jobs_processed_total{status=\"success\"}[1h])) * 100",
+          "legendFormat": "Success Rate"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 95 },
+              { "color": "red", "value": 90 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "title": "Temperature",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 28 },
+      "targets": [
+        { "expr": "node_nvme_temperature_celsius", "legendFormat": "NVMe" },
+        { "expr": "node_hwmon_temp_celsius", "legendFormat": "HW Monitor" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "celsius",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 60 },
+              { "color": "red", "value": 70 }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+=== DIAGNOSTIC REPORT ===
+
+=== USERS ===
+ID:1 Email:student@test.com Role:student Phone:01000000001
+ID:2 Email:admin@example.com Role:admin Phone:01000000000
+ID:3 Email:hackergame1979@gmail.com Role:student Phone:01067473845
+
+=== LECTURES ===
+ID:5 CourseID:1 Title:Test Lecture B2Path:null EncStatus:pending Duration:null
+
+=== COURSES ===
+ID:1 Title:Test Course for Encoding Price:
+ID:2 Title:Test Course for Video Upload Price:
+
+=== ENCODINGS ===
+ID:5 UserID:3 LectureID:5 Status:completed Progress:100% B2:videos/student_3/lecture_5.mp4 Error:null
+
+=== COURSE ACCESS (course_student pivot) ===
+StudentID:1 CourseID:1 AccessType:purchase
+StudentID:3 CourseID:1 AccessType:purchase
+StudentID:2 CourseID:1 AccessType:purchase
+StudentID:2 CourseID:2 AccessType:purchase
+
+=== PHP UPLOAD CONFIG ===
+upload_max_filesize: 2M
+post_max_size: 8M
+memory_limit: 2048M
+max_execution_time: 600
+max_input_time: -1
+
+=== QUEUE CONFIG ===
+queue.default: database
+queue.connection: {"driver":"database","connection":null,"table":"jobs","queue":"default","retry_after":90,"after_commit":false}
+
+=== LAST 20 LINES OF LARAVEL.LOG ===
+#11 {main}
+"} 
+[2026-04-25 07:57:32] local.INFO: AdminMiddleware check {"user_id":2,"is_admin":true,"path":"api/admin/users/pending"} 
+[2026-04-25 07:57:37] local.INFO: AdminMiddleware check {"user_id":2,"is_admin":true,"path":"api/admin/wallet/topups"} 
+[2026-04-25 07:57:39] local.INFO: AdminMiddleware check {"user_id":2,"is_admin":true,"path":"api/admin/courses"} 
+[2026-04-25 07:57:42] local.INFO: AdminMiddleware check {"user_id":2,"is_admin":true,"path":"api/admin/courses"} 
+[2026-04-25 07:57:43] local.INFO: AdminMiddleware check {"user_id":2,"is_admin":true,"path":"api/admin/security/violations"} 
+[2026-04-25 07:57:50] local.INFO: AdminMiddleware check {"user_id":2,"is_admin":true,"path":"api/admin/courses/1"} 
+[2026-04-25 07:57:51] local.INFO: AdminMiddleware check {"user_id":2,"is_admin":true,"path":"api/admin/courses/1/lectures"} 
+[2026-04-25 07:57:52] local.INFO: AdminMiddleware check {"user_id":2,"is_admin":true,"path":"api/admin/courses/1"} 
+[2026-04-25 07:57:54] local.INFO: AdminMiddleware check {"user_id":2,"is_admin":true,"path":"api/admin/courses/1/lectures"} 
+[2026-04-25 07:58:17] local.INFO: AdminMiddleware check {"user_id":2,"is_admin":true,"path":"api/admin/lectures/5/video/upload"} 
+[2026-04-25 07:58:17] local.INFO: Upload request received {"lecture_id":5,"has_file":false,"file_size":null,"user_id":2,"is_admin":true} 
+[2026-04-25 07:58:17] local.ERROR: Validation failed {"errors":{"video":["The video failed to upload."]},"message":"The video failed to upload."} 
+[2026-04-25 08:02:44] local.INFO: AdminMiddleware check {"user_id":2,"is_admin":true,"path":"api/admin/courses/1"} 
+[2026-04-25 08:02:45] local.INFO: AdminMiddleware check {"user_id":2,"is_admin":true,"path":"api/admin/courses/1/lectures"} 
+[2026-04-25 08:04:45] local.ERROR: Class "App\Models\CourseAccess" not found {"exception":"[object] (Error(code: 0): Class \"App\\Models\\CourseAccess\" not found at C:/Users/drhab/OneDrive/Desktop/minasa real - Copy (2)/backend/diagnose.php:44)
+[stacktrace]
+#0 {main}
+"} 

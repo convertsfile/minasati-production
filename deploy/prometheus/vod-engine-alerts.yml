@@ -1,0 +1,94 @@
+groups:
+  - name: vod_engine_alerts
+    rules:
+      # CPU overload — load average > 5.0 for 5 minutes
+      - alert: VOD_CPU_Overload
+        expr: node_load1 > 5.0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Encoding server CPU overloaded (load: {{ $value }})"
+
+      # CPU critical — load average > 5.5 for 2 minutes
+      - alert: VOD_CPU_Critical
+        expr: node_load1 > 5.5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Encoding server CPU critically overloaded"
+
+      # Low memory — available < 768 MB
+      - alert: VOD_LowMemory
+        expr: node_memory_MemAvailable_bytes / 1024 / 1024 < 768
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Encoding server low memory ({{ $value }} MB available)"
+
+      # Disk space — free < 5 GB
+      - alert: VOD_LowDiskSpace
+        expr: node_filesystem_avail_bytes{mountpoint="/var/tmp"} / 1024 / 1024 / 1024 < 5
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Encoding server low disk space on /var/tmp"
+
+      # Queue growing — pending > 50 for 10 minutes
+      - alert: VOD_QueueGrowing
+        expr: vod_engine_pending_jobs > 50
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Encoding queue growing ({{ $value }} pending)"
+
+      # Dead-letter jobs accumulating — dead > 5
+      - alert: VOD_DeadLetterAccumulation
+        expr: vod_engine_dead_letter_jobs > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Dead-letter queue accumulating ({{ $value }} jobs). Manual intervention required."
+
+      # NVMe temperature — > 70°C for 5 minutes
+      - alert: VOD_NVMe_HighTemp
+        expr: node_nvme_temperature_celsius > 70
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "NVMe temperature high ({{ $value }}°C)"
+
+      # NVMe media errors > 0
+      - alert: VOD_NVMe_MediaErrors
+        expr: node_nvme_media_errors > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "NVMe media errors detected ({{ $value }} errors)"
+
+      # Encoding job failing repeatedly (OPS-08)
+      - alert: VOD_Encoding_Failures
+        expr: rate(vod_engine_jobs_processed_total{status="failed"}[30m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High encoding failure rate ({{ $value }} failures/min)"
+
+      # VOD Engine down
+      # NOTE: The label {job="vod-engine"} assumes Prometheus scrape_configs assigns that job name.
+      # If the scrape config uses a different job_name, update this label to match.
+      - alert: VOD_Engine_Down
+        expr: up{job="vod-engine"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "VOD Engine is down"

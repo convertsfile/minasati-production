@@ -1,0 +1,29 @@
+# ── Environment & Secrets ──────────────────────────────────
+.env
+*.key
+*.pem
+secrets/
+credentials/
+
+# ── Build Artifacts ─────────────────────────────────────────
+vod-engine
+vod-engine.exe
+bin/
+dist/
+
+# ── IDE / Editor ───────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# ── Go ──────────────────────────────────────────────────────
+vendor/
+
+# ── Runtime Data ────────────────────────────────────────────
+/tmp/
+/var/tmp/
+/data/
+/var/log/

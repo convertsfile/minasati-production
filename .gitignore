@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# Build outputs
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Misc
+*.pem
+*.exe
+
+# Workers (Go binaries are compiled)
+workers/vod-engine/api.exe
+workers/vod-engine/server.exe
+workers/vod-engine/.env
+
+# Windows files
+desktop.ini
+nul

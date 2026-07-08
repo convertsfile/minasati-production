@@ -1,0 +1,15 @@
+/var/log/vod-engine/*.log {
+    daily
+    rotate 30
+    maxsize 100M
+    compress
+    delaycompress
+    missingok
+    notifempty
+    copytruncate
+    dateext
+    dateformat -%Y%m%d
+    postrotate
+        systemctl reload vod-engine 2>/dev/null || true
+    endscript
+}

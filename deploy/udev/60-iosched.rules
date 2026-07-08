@@ -1,0 +1,3 @@
+# NVMe I/O scheduler: use "none" (no-op) for low latency
+# For fairness under concurrent load, use "mq-deadline" instead of "none"
+ACTION=="add|change", KERNEL=="nvme[0-9]n[0-9]", ATTR{queue/scheduler}="none"
