@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Windows reserved files
 nul
+
+# playwright test results
+/test-results/

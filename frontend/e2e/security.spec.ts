@@ -67,7 +67,7 @@ test.describe('XSS & Injection', () => {
     const filePath = require('path').join(require('os').tmpdir(), 'test-id.png');
     const fs = require('fs');
     if (!fs.existsSync(filePath)) {
-      fs.writeFileSync(filePath, Buffer.alloc(1024));
+      fs.writeFileSync(filePath, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64'));
     }
     await page.locator('input[type="file"]').setInputFiles(filePath);
     await page.waitForTimeout(500);

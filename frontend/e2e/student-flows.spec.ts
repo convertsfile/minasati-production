@@ -12,19 +12,24 @@ async function registerStudent(page: any, suffix: string, retries = 3) {
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
       const response = await page.request.post('http://localhost:8000/api/auth/register', {
-        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        data: {
+        headers: { Accept: 'application/json' },
+        multipart: {
           full_name: `Test Student ${suffix}`,
           email,
           password,
           password_confirmation: password,
           phone,
           parent_phone: parentPhone,
-          academic_year: 'الاول الابتدائي',
+          academic_year: 'الاول الاعدادي',
           student_number: `STU${Date.now()}${attempt}`,
           school: `Test School ${suffix}`,
           parent_job: `Test Job ${suffix}`,
           governorate: 'القاهرة',
+          id_image: {
+            name: 'test-id.png',
+            mimeType: 'image/png',
+            buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64'),
+          }
         },
       });
 
@@ -37,15 +42,14 @@ async function registerStudent(page: any, suffix: string, retries = 3) {
         throw new Error(`Registration failed: ${JSON.stringify(data)}`);
       }
 
-      const devOtp = data.data?.dev_otp || '123456';
-      const tempUserId = data.data?.temp_user_id;
+      const tempUserId = data.data?.tempUserId || data.data?.temp_user_id;
 
-      // Verify OTP via API (with retry for rate limiting)
+      // Verify OTP via API (with retry for rate limiting) using dev bypass token
       for (let otpAttempt = 0; otpAttempt < retries; otpAttempt++) {
         try {
           const otpResponse = await page.request.post('http://localhost:8000/api/auth/verify-otp', {
             headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-            data: { temp_user_id: tempUserId, otp: devOtp },
+            data: { temp_user_id: tempUserId, firebase_token: 'DEV_TEST_TOKEN_123' },
           });
 
           const otpData = await otpResponse.json();
@@ -122,7 +126,7 @@ test.describe('Student Registration Flow', () => {
         password_confirmation: 'Password123!',
         phone: `0100${String(Math.floor(10000000 + Math.random() * 90000000)).slice(0, 7)}`,
         parent_phone: `0100${String(Math.floor(10000000 + Math.random() * 90000000)).slice(0, 7)}`,
-        academic_year: 'الاول الابتدائي',
+        academic_year: 'الاول الاعدادي',
         student_number: `STU${Date.now()}`,
         school: 'Duplicate School',
         parent_job: 'Duplicate Job',
@@ -176,7 +180,7 @@ test.describe('Course Browsing', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     const body = await page.textContent('body');
-    expect(body).toContain('كورساتنا المميزة');
+    expect(body).toContain('أحدث الكورسات');
   });
 
   test('TC-C02: Courses page loads and shows course list', async ({ page }) => {
