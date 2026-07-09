@@ -117,7 +117,9 @@ export default function StudentDashboard() {
       const userRes = await fetch(`${API_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
       if (userRes.ok) {
         const userDataJson = await userRes.json();
-        const data = userDataJson.data || userDataJson;
+        // /auth/me returns {status:"success", data:UserResource} →
+        // UserResource is {success, message, data:User}. Unwrap twice.
+        const data = userDataJson?.data?.data ?? userDataJson?.data ?? userDataJson;
         if (data?.status === 'pending') { router.replace('/waiting-room'); return; }
         setUserData({
           ...data,

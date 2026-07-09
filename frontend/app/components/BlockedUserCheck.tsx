@@ -23,13 +23,17 @@ export default function BlockedUserCheck({ children }: { children: React.ReactNo
       const token = getToken();
       if (!token) return;
       try {
-        const res = await fetch(`${API_URL}/api/auth/status`, {
+        // /api/auth/status is DEAD; use /api/auth/me instead.
+        // /auth/me returns a non-standard envelope { status, data: UserResource }.
+        const res = await fetch(`${API_URL}/api/auth/me`, {
           headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
         });
         if (res.ok) {
           const data = await res.json();
-          const user = data.data?.user || data.data || data;
-          if (user.is_blocked || user.status === 'blocked') {
+          // Unwrap the wire envelope: {status:"success", data:UserResource}
+          // then the inner ApiResponse {success, message, data:User}.
+          const user = data?.data?.data ?? data?.data ?? data;
+          if (user && (user.is_blocked || user.status === 'blocked')) {
             router.replace('/locked');
           }
         }

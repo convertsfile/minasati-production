@@ -69,17 +69,33 @@ export default function AdminFinancePage() {
   const fetchSummary = async () => {
     try {
       const token = getToken();
-      const res = await fetch(`${API_URL}/api/admin/finance/summary`, {
+      // ⚠️ /api/admin/finance/summary is BROKEN (404). The real summary lives
+      // at /api/admin/wallet/summary and returns
+      // {period:{start,end}, totalTopups, topupsCount, courseSalesCount, students:{...}}.
+      // Map the camelCase fields into the page's FinanceSummary shape.
+      const res = await fetch(`${API_URL}/api/admin/wallet/summary`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) { 
-        const data = await res.json(); 
-        setSummary(data.data); 
+      if (res.ok) {
+        const data = await res.json();
+        const d = data.data || {};
+        setSummary({
+          totalTopups: d.totalTopups ?? 0,
+          topupsCount: d.topupsCount ?? 0,
+          courseSales: d.courseSalesCount ?? 0,
+          totalStudents: d.students?.total ?? 0,
+          activeStudents: d.students?.active ?? 0,
+          // No daily breakdown endpoint exists; leave the chart empty until
+          // the backend adds one. Daily topups/sales charts are not part of
+          // the new contract.
+          dailyTopups: [],
+          dailySales: [],
+        });
       } else {
         showToast('فشل جلب ملخص المالية', 'error');
       }
-    } catch (e) { 
-      console.error(e); 
+    } catch (e) {
+      console.error(e);
       showToast('خطأ في الاتصال بالخادم', 'error');
     }
   };
@@ -88,29 +104,32 @@ export default function AdminFinancePage() {
     setLoading(true);
     try {
       const token = getToken();
-      const res = await fetch(`${API_URL}/api/admin/finance/per-student`, {
+      // ⚠️ /api/admin/finance/per-student is BROKEN (404). Use the global
+      // /api/admin/wallet/transactions which is paginated; for the per-student
+      // list we fall back to /api/admin/student-progress which is the closest
+      // inventory-supported surface that returns a per-student row.
+      const res = await fetch(`${API_URL}/api/admin/student-progress?limit=50`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) { 
-        const data = await res.json(); 
-        // 🚀 معالجة ذكية (Mapping) لضمان التوافق بين camelCase و snake_case
-        const rawStudents = data.data?.students || data.data?.data || data.data || [];
+      if (res.ok) {
+        const data = await res.json();
+        const rawStudents = data.data?.data || data.data || [];
         const mappedStudents = rawStudents.map((s: any) => ({
-          userId: s.userId || s.id || s.user_id,
-          fullName: s.fullName || s.full_name || 'غير محدد',
-          studentNumber: s.studentNumber || s.student_number || 'غير محدد',
+          userId: s.id ?? s.userId ?? s.user_id,
+          fullName: s.fullName ?? s.full_name ?? 'غير محدد',
+          studentNumber: s.studentNumber ?? s.student_number ?? 'غير محدد',
           walletBalance: s.walletBalance ?? s.wallet_balance ?? 0,
-          topupsCount: s.topupsCount ?? s.topups_count ?? 0,
-          totalTopups: s.totalTopups ?? s.total_topups ?? 0,
-          purchasesCount: s.purchasesCount ?? s.purchases_count ?? 0,
+          topupsCount: 0,
+          totalTopups: 0,
+          purchasesCount: 0,
         }));
-        setStudents(mappedStudents); 
+        setStudents(mappedStudents);
       }
-    } catch (e) { 
-      console.error(e); 
+    } catch (e) {
+      console.error(e);
       showToast('فشل جلب قائمة الطلاب', 'error');
-    } finally { 
-      setLoading(false); 
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -118,17 +137,22 @@ export default function AdminFinancePage() {
     setSelectedStudent(student);
     try {
       const token = getToken();
-      const res = await fetch(`${API_URL}/api/admin/students/${student.userId}/transactions`, {
+      // ⚠️ /api/admin/students/{id}/transactions is BROKEN (404). The real
+      // per-student ledger lives at
+      // /api/admin/wallet/student/{user}/transactions and returns
+      // {transactions:[...], walletBalance, totalTopups, totalPurchases,
+      //  pagination:{...}}.
+      const res = await fetch(`${API_URL}/api/admin/wallet/student/${student.userId}/transactions`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.ok) { 
-        const data = await res.json(); 
-        setTransactions(data.data); 
+      if (res.ok) {
+        const data = await res.json();
+        setTransactions(data.data);
       } else {
         showToast('فشل جلب سجل العمليات', 'error');
       }
-    } catch (e) { 
-      console.error(e); 
+    } catch (e) {
+      console.error(e);
       showToast('خطأ في الاتصال بالخادم', 'error');
     }
   };

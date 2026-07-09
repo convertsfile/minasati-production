@@ -42,14 +42,18 @@ export default function WaitingRoomPage() {
       }
 
       try {
-        const response = await fetch(`${API_URL}/api/auth/status`, {
+        // /api/auth/status is DEAD; use /api/auth/me. The /me endpoint returns
+        // a non-standard envelope {status:"success", data:UserResource}.
+        const response = await fetch(`${API_URL}/api/auth/me`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         const data = await response.json();
+        // Unwrap nested envelopes: {status,data:UserResource} → UserResource → User
+        const user = data?.data?.data ?? data?.data ?? data;
 
-        if (data.data?.status === "active") {
+        if (user && user.status === "active") {
           router.push("/dashboard");
-        } else if (data.data?.status === "rejected") {
+        } else if (user && user.status === "rejected") {
           router.push("/resubmit");
         }
       } catch (e) {

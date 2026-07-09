@@ -1,0 +1,424 @@
+[
+  {
+    "name": "01-home-desktop",
+    "path": "/",
+    "ok": true,
+    "url": "http://localhost:3002/",
+    "status": null,
+    "h1": "تعلم بذكاءوحقق التميز مع منصتنا",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": []
+  },
+  {
+    "name": "01-home-mobile",
+    "path": "/",
+    "ok": true,
+    "url": "http://localhost:3002/",
+    "status": null,
+    "h1": "تعلم بذكاءوحقق التميز مع منصتنا",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": []
+  },
+  {
+    "name": "02-login-desktop",
+    "path": "/login",
+    "ok": true,
+    "url": "http://localhost:3002/login",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "02-login-mobile",
+    "path": "/login",
+    "ok": true,
+    "url": "http://localhost:3002/login",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "03-register-desktop",
+    "path": "/register",
+    "ok": true,
+    "url": "http://localhost:3002/register",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "04-redeem-desktop",
+    "path": "/redeem",
+    "ok": true,
+    "url": "http://localhost:3002/login",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "05-otp-desktop",
+    "path": "/otp",
+    "ok": true,
+    "url": "http://localhost:3002/otp",
+    "status": 200,
+    "h1": "منصاتي",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "10-dashboard-desktop",
+    "path": "/dashboard",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fdashboard",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "10-dashboard-mobile",
+    "path": "/dashboard",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fdashboard",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "11-courses-desktop",
+    "path": "/courses",
+    "ok": true,
+    "url": "http://localhost:3002/courses",
+    "status": null,
+    "h1": "استكشف الكورسات",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": []
+  },
+  {
+    "name": "11-courses-mobile",
+    "path": "/courses",
+    "ok": true,
+    "url": "http://localhost:3002/courses",
+    "status": null,
+    "h1": "استكشف الكورسات",
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ],
+    "failedRequests": []
+  },
+  {
+    "name": "12-wallet-desktop",
+    "path": "/wallet",
+    "ok": true,
+    "url": "http://localhost:3002/login",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "12-wallet-mobile",
+    "path": "/wallet",
+    "ok": true,
+    "url": "http://localhost:3002/login",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "13-forum-desktop",
+    "path": "/forum",
+    "ok": true,
+    "url": "http://localhost:3002/login",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "14-waiting-room-desktop",
+    "path": "/waiting-room",
+    "ok": true,
+    "url": "http://localhost:3002/login",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "15-resubmit-desktop",
+    "path": "/resubmit",
+    "ok": true,
+    "url": "http://localhost:3002/login",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "16-blocked-desktop",
+    "path": "/blocked",
+    "ok": true,
+    "url": "http://localhost:3002/login",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "17-locked-desktop",
+    "path": "/locked",
+    "ok": true,
+    "url": "http://localhost:3002/login",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "20-comprehensive-exams-1-desktop",
+    "path": "/comprehensive-exams/1",
+    "ok": true,
+    "url": "http://localhost:3002/login",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "20-comprehensive-exams-1-mobile",
+    "path": "/comprehensive-exams/1",
+    "ok": true,
+    "url": "http://localhost:3002/login",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "30-admin-home-desktop",
+    "path": "/admin",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "30-admin-home-mobile",
+    "path": "/admin",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "31-admin-students-desktop",
+    "path": "/admin/students",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Fstudents",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "32-admin-courses-desktop",
+    "path": "/admin/courses",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Fcourses",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "33-admin-exams-desktop",
+    "path": "/admin/exams",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Fexams",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "34-admin-monitoring-desktop",
+    "path": "/admin/monitoring",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Fmonitoring",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "35-admin-homework-desktop",
+    "path": "/admin/homework",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Fhomework",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "36-admin-payment-numbers-desktop",
+    "path": "/admin/payment-numbers",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Fpayment-numbers",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "37-admin-finance-desktop",
+    "path": "/admin/finance",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Ffinance",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "38-admin-topups-desktop",
+    "path": "/admin/topups",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Ftopups",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "39-admin-forum-desktop",
+    "path": "/admin/forum",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Fforum",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "40-admin-center-codes-desktop",
+    "path": "/admin/center-codes",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Fcenter-codes",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "41-admin-pending-students-desktop",
+    "path": "/admin/pending-students",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Fpending-students",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "42-admin-plan-desktop",
+    "path": "/admin/plan",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Fplan",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "43-admin-security-desktop",
+    "path": "/admin/security",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Fsecurity",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "44-admin-settings-desktop",
+    "path": "/admin/settings",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Fsettings",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "45-admin-stats-courses-desktop",
+    "path": "/admin/stats/courses",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Fstats%2Fcourses",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "46-admin-stats-finance-desktop",
+    "path": "/admin/stats/finance",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Fstats%2Ffinance",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "50-admin-comp-exams-course-1-desktop",
+    "path": "/admin/courses/1/comprehensive-exams",
+    "ok": true,
+    "url": "http://localhost:3002/login?redirect=%2Fadmin%2Fcourses%2F1%2Fcomprehensive-exams",
+    "status": 200,
+    "h1": "منصتنا",
+    "consoleErrors": [],
+    "failedRequests": []
+  },
+  {
+    "name": "60-health-live-desktop",
+    "path": "/health/live",
+    "ok": true,
+    "url": "http://localhost:3002/health/live",
+    "status": 404,
+    "bodyPreview": "body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px  olid rgba(0,0,0,.3)}@media (prefer -color- cheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px  olid rgba(255,255,255,.3)}}404Thi  page could not be found. elf.__next_r=\"SxVB9lTQ6D1r35M OZfaH\"( elf.__ne"
+  },
+  {
+    "name": "61-health-ready-desktop",
+    "path": "/health/ready",
+    "ok": true,
+    "url": "http://localhost:3002/health/ready",
+    "status": 404,
+    "bodyPreview": "body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px  olid rgba(0,0,0,.3)}@media (prefer -color- cheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px  olid rgba(255,255,255,.3)}}404Thi  page could not be found. elf.__next_r=\"yZvKU0UbS56J0FBbi1Ze0\"( elf.__ne"
+  },
+  {
+    "name": "62-api-metrics-desktop",
+    "path": "/api/metrics",
+    "ok": true,
+    "url": "http://localhost:3002/api/metrics",
+    "status": 404,
+    "bodyPreview": "body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px  olid rgba(0,0,0,.3)}@media (prefer -color- cheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px  olid rgba(255,255,255,.3)}}404Thi  page could not be found. elf.__next_r=\"PZL6v2J27Yt2C-_WalEqk\"( elf.__ne"
+  }
+]

@@ -91,7 +91,10 @@ export default function AdminDashboard() {
 
       if (response.ok) {
         const data = await response.json();
-        const user = data.data?.user || data.data || data; 
+        // /auth/me returns {status:"success", data:UserResource} →
+        // UserResource is {success, message, data:User}. Unwrap twice to
+        // reach the flat User object so role/email checks below work.
+        const user = data?.data?.data ?? data?.data ?? data;
 
         const isAdmin = 
           user?.is_admin === true || 

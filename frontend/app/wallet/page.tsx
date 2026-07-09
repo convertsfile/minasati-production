@@ -56,8 +56,12 @@ interface TopupRequest {
 
 interface PaymentNumberData {
   provider: string;
-  payment_number: string;
-  display_order: number;
+  // Backend topup/initiate returns these as snake_case: payment_number,
+  // display_order. Read both casings defensively.
+  paymentNumber?: string;
+  payment_number?: string;
+  displayOrder?: number;
+  display_order?: number;
   instructions: string[];
 }
 
@@ -129,12 +133,16 @@ export default function WalletPage() {
         const balanceData = await balanceRes.json();
         setBalance(balanceData.data?.balance || 0);
 
-        const statusRes = await fetch(`${API_URL}/api/auth/status`, {
+        // /api/auth/status is DEAD; use /api/auth/me. The /me endpoint returns
+        // a non-standard envelope {status:"success", data:UserResource}.
+        const statusRes = await fetch(`${API_URL}/api/auth/me`, {
           headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
         });
         if (statusRes.ok) {
           const statusData = await statusRes.json();
-          if (statusData.data?.status === 'pending') {
+          // Unwrap nested envelopes to reach the User object
+          const user = statusData?.data?.data ?? statusData?.data ?? statusData;
+          if (user && user.status === 'pending') {
             router.replace('/waiting-room');
             return;
           }
@@ -149,7 +157,10 @@ export default function WalletPage() {
           type: t.type,
           amount: t.amount,
           balanceBefore: t.balance_before ?? t.balanceBefore ?? 0,
-          balanceAfter: t.balance_after ?? t.balanceAfter ?? 0,
+          // Backend WalletTransactionResource intentionally exposes BOTH
+          // balanceBefore (camel) and balance_After (snake) as a legacy
+          // holdover. Read both casings defensively (inventory §32.3).
+          balanceAfter: t.balanceAfter ?? t.balance_After ?? t.balance_after ?? 0,
           reference: t.reference || '',
           paymentMethod: t.payment_method ?? t.paymentMethod ?? '',
           description: t.description || '',
@@ -201,9 +212,15 @@ export default function WalletPage() {
 
     try {
       const token = getToken();
-      const response = await fetch(`${API_URL}/api/wallet/topup/initiate?provider=${method}`, {
+      // Backend expects { provider } in the JSON body (NOT a query string).
+      const response = await fetch(`${API_URL}/api/wallet/topup/initiate`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ provider: method }),
       });
 
       const data = await response.json();
@@ -600,7 +617,7 @@ export default function WalletPage() {
                 <div className="payment-number-display">
                   <p className="payment-number-label">أرسل المبلغ إلى:</p>
                   <h3 className="payment-number-value">
-                    {paymentNumberData.payment_number}
+                    {paymentNumberData.paymentNumber ?? paymentNumberData.payment_number}
                   </h3>
                   <p className="payment-number-provider">
                     {paymentNumberData.provider === 'instapay' ? (

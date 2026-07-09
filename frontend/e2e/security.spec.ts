@@ -10,14 +10,24 @@ test.describe('API Security & Authentication', () => {
     { method: 'GET', url: '/api/wallet/balance' },
     { method: 'POST', url: '/api/wallet/topup/initiate' },
     { method: 'GET', url: '/api/admin/courses' },
-    { method: 'GET', url: '/api/admin/pending-students' },
-    { method: 'GET', url: '/api/admin/finance' },
-    { method: 'GET', url: '/api/admin/wallet/pending' },
-    { method: 'GET', url: '/api/admin/topups' },
+    // ⚠️ The following were rewired from BROKEN → real inventory endpoints:
+    // /api/admin/pending-students → /api/admin/users/pending
+    { method: 'GET', url: '/api/admin/users/pending' },
+    // /api/admin/finance (no such route) → /api/admin/wallet/summary
+    { method: 'GET', url: '/api/admin/wallet/summary' },
+    // /api/admin/wallet/pending (no such route) → /api/admin/wallet/topups?status=pending
+    { method: 'GET', url: '/api/admin/wallet/topups?status=pending' },
+    // /api/admin/topups → /api/admin/wallet/topups
+    { method: 'GET', url: '/api/admin/wallet/topups' },
     { method: 'GET', url: '/api/admin/security/violations' },
     { method: 'GET', url: '/api/admin/settings' },
     { method: 'POST', url: '/api/admin/courses' },
-    { method: 'DELETE', url: '/api/admin/students/1' },
+    // ⚠️ /api/admin/students/1 (user deletion by DELETE) does not exist; the
+    // closest user-management surface is
+    // /api/admin/security/block-student/{user} (POST) or
+    // /api/admin/users/{user}/reset-password (POST). Switch the test to a
+    // POST against the block endpoint so the contract assertion is real.
+    { method: 'POST', url: '/api/admin/security/block-student/1' },
   ];
 
   for (const ep of endpoints) {
@@ -62,7 +72,7 @@ test.describe('XSS & Injection', () => {
     await page.locator('input[type="file"]').setInputFiles(filePath);
     await page.waitForTimeout(500);
 
-    await page.click('button:has-text("إنشاء الحساب")');
+    await page.click('button:has-text("إنشاء حساب")');
     await page.waitForTimeout(2000);
     const body = await page.textContent('body');
     expect(body).toBeTruthy();

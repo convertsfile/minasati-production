@@ -93,8 +93,11 @@ export default function AdminCoursesPage() {
         ? `${API_URL}/api/admin/courses/${editingCourse.id}`
         : `${API_URL}/api/admin/courses`;
 
+      // ⚠️ Backend registers PATCH /api/admin/courses/{course} for partial
+      // updates (Route::patch(...)). Using PUT here 404s because the route
+      // table does not include a PUT binding.
       const res = await fetch(url, {
-        method: editingCourse ? 'PUT' : 'POST',
+        method: editingCourse ? 'PATCH' : 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',

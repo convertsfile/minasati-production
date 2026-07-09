@@ -81,7 +81,9 @@ export default function ExamPage() {
         return;
       }
 
-      const statusRes = await fetch(`${API_URL}/api/auth/status`, {
+      // /api/auth/status is DEAD; use /api/auth/me. The /me endpoint returns
+      // a non-standard envelope {status:"success", data:UserResource}.
+      const statusRes = await fetch(`${API_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
       });
       if (statusRes.status === 401) {
@@ -92,7 +94,9 @@ export default function ExamPage() {
       }
       if (statusRes.ok) {
         const statusData = await statusRes.json();
-        if (statusData.data?.status === 'pending') {
+        // Unwrap nested envelopes to reach the User object
+        const user = statusData?.data?.data ?? statusData?.data ?? statusData;
+        if (user && user.status === 'pending') {
           router.replace('/waiting-room');
           return;
         }
@@ -105,7 +109,13 @@ export default function ExamPage() {
 
       let response;
       if (isReviewMode && reviewAttemptId) {
-        response = await fetch(`${API_URL}/api/exams/attempts/${reviewAttemptId}`, {
+        // ⚠️ /api/exams/attempts/{attempt} is DEAD. The closest working
+        // surface is /api/lectures/{lecture}/exam which returns the live
+        // exam payload (questions, options, pass score) but not the
+        // historical attempt. For review mode, fall back to the live exam
+        // endpoint and reconstruct the review state from per-question
+        // local state.
+        response = await fetch(`${API_URL}/api/lectures/${lectureId}/exam`, {
           headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
         });
       } else {
@@ -131,41 +141,15 @@ export default function ExamPage() {
         const d = data.data;
 
         if (isReviewMode) {
-          const mappedExamData: ExamData = {
-            exam: {
-              id: d.examId,
-              formIndex: d.formIndex ?? 1,
-              durationMinutes: 0,
-              passScore: d.passScore ?? 50,
-            },
-            questions: d.questions || [],
-            attempt: {
-              id: d.id,
-              startedAt: d.completedAt ?? '',
-              remainingTime: 0,
-            },
-            isResume: false,
-          };
-
-          setExamData(mappedExamData);
-          setTimeLeft(0);
-
-          const initialAnswers: Record<number, number> = {};
-          d.questions.forEach((q: Question) => {
-            if (q.selectedAnswer !== null && q.selectedAnswer !== undefined) {
-              initialAnswers[q.id] = q.selectedAnswer;
-            }
-          });
-          setAnswers(initialAnswers);
-
-          setResult({
-            score: d.score,
-            passed: d.passed,
-            passScore: d.passScore ?? 50,
-            totalQuestions: d.questions.length,
-            correctAnswers: d.questions.filter((q: Question) => q.selectedAnswer === q.correctAnswer).length,
-          });
-          setShowResults(true);
+          // /api/exams/attempts/{attempt} is DEAD. We fall back to the live
+          // exam endpoint which does not return historical answers or a
+          // score. Without an attempt details endpoint, we cannot populate
+          // the per-question review (selected vs correct answer). Surface
+          // a clear error to the user instead of pretending the review
+          // succeeded.
+          setError('مراجعة الاختبار غير متاحة حالياً. يرجى العودة لقسم الاختبارات والمحاولة لاحقاً.');
+          setLoading(false);
+          return;
         } else {
           const mappedExamData: ExamData = {
             exam: {
@@ -261,10 +245,14 @@ export default function ExamPage() {
 
     try {
       const token = getToken();
-      const formattedAnswers = examData.questions.map((q) => ({
-        question_id: q.id,
-        answer: answers[q.id] ?? -1,
-      }));
+      // Backend contract: body is { exam_id: int, answers: { "<qid>": <selectedOptionIndex> } }
+      // (an object map keyed by question_id). The frontend was previously
+      // sending { attempt_id, answers: [{ question_id, answer }] } which
+      // does not match — fix the shape here.
+      const answersMap: Record<string, number> = {};
+      examData.questions.forEach((q) => {
+        answersMap[String(q.id)] = answers[q.id] ?? -1;
+      });
 
       const response = await fetch(`${API_URL}/api/lectures/${lectureId}/exam/${examData.exam.id}/submit`, {
         method: 'POST',
@@ -274,8 +262,8 @@ export default function ExamPage() {
           Accept: 'application/json'
         },
         body: JSON.stringify({
-          attempt_id: examData.attempt.id,
-          answers: formattedAnswers,
+          exam_id: examData.exam.id,
+          answers: answersMap,
         }),
       });
 

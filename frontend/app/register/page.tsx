@@ -208,6 +208,11 @@ export default function RegisterPage() {
         console.log('Development OTP Code:', result.dev_otp);
       }
 
+      // Stash the phone number on sessionStorage so the OTP page can kick off
+      // the Firebase phone-auth flow and exchange the 6-digit code for the
+      // firebase_token required by POST /api/auth/verify-otp.
+      sessionStorage.setItem('register_phone', `+2${formData.phone.replace(/\s/g, '')}`);
+
       const tempId = result.temp_user_id || result.tempUserId;
       router.push(`/otp?tempUserId=${encodeURIComponent(tempId)}`);
 

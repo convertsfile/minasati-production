@@ -110,12 +110,17 @@ export default function AdminExamControlPage() {
 
     try {
       const token = getToken();
-      const res = await fetch(`${API_URL}/api/admin/lectures/${selectedLectureId}/students-attempts`, {
+      // ⚠️ /api/admin/lectures/{id}/students-attempts is BROKEN (404). Use
+      // /api/admin/lectures/{lecture}/exams/results which returns the same
+      // shape (paginated list of student attempts for the lecture).
+      const res = await fetch(`${API_URL}/api/admin/lectures/${selectedLectureId}/exams/results`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (res.ok) {
         const data = await res.json();
+        // The endpoint returns a paginated ApiResponse; read both the
+        // standard `data` and the `meta` payloads.
         setStudents(data.data || []);
       } else {
         showToast('فشل تحميل بيانات الطلاب', 'error');
@@ -133,14 +138,16 @@ export default function AdminExamControlPage() {
 
     try {
       const token = getToken();
-      const res = await fetch(`${API_URL}/api/admin/lectures/${selectedLectureId}/instant-unlock`, {
+      // ⚠️ /api/admin/lectures/{id}/instant-unlock is BROKEN (404). The
+      // backend exposes /api/admin/lectures/{lecture}/unlock-student/{user}
+      // (both lecture and user are required path parameters).
+      const res = await fetch(`${API_URL}/api/admin/lectures/${selectedLectureId}/unlock-student/${userId}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({ user_id: userId }),
       });
 
       const data = await res.json();
@@ -165,14 +172,17 @@ export default function AdminExamControlPage() {
 
     try {
       const token = getToken();
-      const res = await fetch(`${API_URL}/api/admin/lectures/${selectedLectureId}/reset-attempts`, {
+      // ⚠️ The reset-attempts endpoint requires {user} as a path parameter
+      // (per backend route binding). Previously the frontend sent
+      // /api/admin/lectures/{id}/reset-attempts with {user_id} in the body,
+      // which 422s because the route is registered with {user} in the path.
+      const res = await fetch(`${API_URL}/api/admin/lectures/${selectedLectureId}/reset-attempts/${userId}`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
         },
-        body: JSON.stringify({ user_id: userId }),
       });
 
       const data = await res.json();

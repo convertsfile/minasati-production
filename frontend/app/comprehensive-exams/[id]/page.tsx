@@ -64,9 +64,24 @@ export default function StudentExamDetailsPage() {
   const fetchExamDetails = async () => {
     setLoading(true);
     try {
-      // جلب التفاصيل مع حالة الشراء والرصيد الحالي للطالب
-      const response = await api.get(`/comprehensive-exams/${examId}`);
-      const data = response.data?.data || response.data;
+      // ⚠️ /api/comprehensive-exams/{id} is DEAD (controller method missing).
+      // Workaround: call /api/comprehensive-exams/available, then look up the
+      // requested exam in the returned list. The list uses snake_case fields
+      // (price_points, course_title, is_purchased, duration_minutes, ...) per
+      // the inventory §32.3 holdover note — read both casings defensively.
+      const response = await api.get('/comprehensive-exams/available');
+      const payload: any = response;
+      const list: any[] = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.data)
+        ? payload.data
+        : Array.isArray(payload?.data?.data)
+        ? payload.data.data
+        : [];
+      const data = list.find((e) => String(e.id) === String(examId));
+      if (!data) {
+        throw new Error('الاختبار غير موجود أو لم يتم نشره بعد');
+      }
       
       setExam({
         id: data.id,
@@ -95,7 +110,7 @@ export default function StudentExamDetailsPage() {
 
   const handlePurchase = () => {
     if (!exam) return;
-    
+
     if (exam.userWalletBalance < exam.pricePoints) {
       showToast('رصيد محفظتك غير كافٍ. قم بشحن المحفظة أولاً.', 'error');
       return;
@@ -108,8 +123,26 @@ export default function StudentExamDetailsPage() {
         setConfirmDialog(null);
         setProcessingAction(true);
         try {
-          await api.post(`/comprehensive-exams/${exam.id}/purchase`);
-          showToast('تم شراء الاختبار بنجاح! يمكنك البدء الآن.', 'success');
+          // The /purchase response uses snake_case (comprehensive_exam_id,
+          // amount_paid, new_balance, wallet_transaction_id) — see inventory
+          // §32.3 holdover. The frontend axios interceptor returns
+          // `response.data.data`, which for the standard envelope is the
+          // purchase object. Read both casings defensively in the success
+          // toast (e.g. show new balance when available).
+          const purchaseRes: any = await api.post(`/comprehensive-exams/${exam.id}/purchase`);
+          const purchaseData = purchaseRes?.data ?? purchaseRes;
+          const newBalance = purchaseData?.new_balance ?? purchaseData?.newBalance;
+          const alreadyOwned = purchaseData?.already_owned ?? purchaseData?.alreadyOwned;
+          if (alreadyOwned) {
+            showToast('هذا الاختبار مفعّل لديك بالفعل. يمكنك البدء الآن.', 'success');
+          } else {
+            showToast(
+              newBalance !== undefined
+                ? `تم شراء الاختبار بنجاح! رصيدك الجديد ${newBalance} ج.م`
+                : 'تم شراء الاختبار بنجاح! يمكنك البدء الآن.',
+              'success'
+            );
+          }
           fetchExamDetails(); // تحديث الحالة لتظهر "بدء الاختبار"
         } catch (err: any) {
           showToast(err?.message || err?.error || 'فشل إتمام عملية الشراء', 'error');

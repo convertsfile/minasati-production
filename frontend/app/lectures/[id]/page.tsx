@@ -92,7 +92,9 @@ export default function LecturePage() {
 
     const checkPendingStatus = async () => {
       try {
-        const statusRes = await fetch(`${API_URL}/api/auth/status`, {
+        // /api/auth/status is DEAD; use /api/auth/me. The /me endpoint returns
+        // a non-standard envelope {status:"success", data:UserResource}.
+        const statusRes = await fetch(`${API_URL}/api/auth/me`, {
           headers: { Authorization: `Bearer ${currentToken}`, Accept: 'application/json' },
         });
         if (statusRes.status === 401) {
@@ -103,7 +105,9 @@ export default function LecturePage() {
         }
         if (statusRes.ok) {
           const statusData = await statusRes.json();
-          if (statusData.data?.status === 'pending') {
+          // Unwrap nested envelopes to reach the User object
+          const user = statusData?.data?.data ?? statusData?.data ?? statusData;
+          if (user && user.status === 'pending') {
             router.replace('/waiting-room');
             return true;
           }
@@ -258,15 +262,21 @@ export default function LecturePage() {
 
   const fetchCourseLectures = async (authToken: string, courseId: number | string) => {
     try {
-      const url = `${API_URL}/api/courses/lectures?course_id=${courseId}`;
+      // ⚠️ /api/courses/lectures?course_id= is DEAD. Use /api/courses/{course}
+      // and read data.lectures from the CourseResource.
+      const url = `${API_URL}/api/courses/${courseId}`;
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${authToken}`, Accept: 'application/json' },
       });
 
       if (response.ok) {
         const res = await response.json();
-
-        const list = Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data?.lectures) ? res.data.lectures : Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
+        // The axios-style envelope returns { success, message, data: CourseResource }
+        // CourseResource carries the lecture list under data.lectures.
+        const coursePayload = res?.data?.data ?? res?.data ?? res;
+        const list: any[] = Array.isArray(coursePayload?.lectures)
+          ? coursePayload.lectures
+          : [];
 
         const mappedList = list.map((l: any) => ({
           id: l.id,

@@ -30,3 +30,17 @@ interface Grecaptcha {
 }
 
 declare const grecaptcha: Grecaptcha;
+
+// Stash for the Firebase phone auth integration in app/otp/page.tsx. The
+// RecaptchaVerifier and the confirmationResult are kept on the window so the
+// 6-digit OTP submit handler can exchange the user-entered code for the
+// firebase ID token expected by POST /api/auth/verify-otp.
+declare global {
+  interface Window {
+    __firebaseRecaptchaVerifier?: any;
+    __firebaseConfirmationResult?: {
+      confirm: (code: string) => Promise<{ user: { getIdToken: () => Promise<string> } }>;
+    };
+  }
+}
+export {};

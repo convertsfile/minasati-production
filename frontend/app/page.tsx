@@ -143,12 +143,18 @@ export default function Home() {
       });
       if (response.ok) {
         const data = await response.json();
-        setUser(data.data);
-        if (data.data.status === 'pending') {
+        // /api/auth/me returns a non-standard envelope
+        // {status:"success", data:UserResource} where UserResource is itself
+        // an ApiResponse {success, message, data:User}. Drill in twice to
+        // reach the flat User object so the rest of the page can read
+        // user.status, user.full_name, etc. without caring about the path.
+        const user = data?.data?.data ?? data?.data ?? data;
+        setUser(user);
+        if (user && user.status === 'pending') {
           router.push('/waiting-room');
           return;
         }
-        if (data.data.status === 'rejected') {
+        if (user && user.status === 'rejected') {
           router.push('/resubmit');
           return;
         }

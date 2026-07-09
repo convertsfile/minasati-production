@@ -1,0 +1,226 @@
+[
+  {
+    "name": "01-home",
+    "path": "/",
+    "desktop": true,
+    "mobile": true,
+    "auth": false
+  },
+  {
+    "name": "02-login",
+    "path": "/login",
+    "desktop": true,
+    "mobile": true,
+    "auth": false
+  },
+  {
+    "name": "03-register",
+    "path": "/register",
+    "desktop": true,
+    "mobile": false,
+    "auth": false
+  },
+  {
+    "name": "04-redeem",
+    "path": "/redeem",
+    "desktop": true,
+    "mobile": false,
+    "auth": false
+  },
+  {
+    "name": "05-otp",
+    "path": "/otp",
+    "desktop": true,
+    "mobile": false,
+    "auth": false
+  },
+  {
+    "name": "10-dashboard",
+    "path": "/dashboard",
+    "desktop": true,
+    "mobile": true,
+    "auth": "student"
+  },
+  {
+    "name": "11-courses",
+    "path": "/courses",
+    "desktop": true,
+    "mobile": true,
+    "auth": "student"
+  },
+  {
+    "name": "12-wallet",
+    "path": "/wallet",
+    "desktop": true,
+    "mobile": true,
+    "auth": "student"
+  },
+  {
+    "name": "13-forum",
+    "path": "/forum",
+    "desktop": true,
+    "mobile": false,
+    "auth": "student"
+  },
+  {
+    "name": "14-waiting-room",
+    "path": "/waiting-room",
+    "desktop": true,
+    "mobile": false,
+    "auth": "student"
+  },
+  {
+    "name": "15-resubmit",
+    "path": "/resubmit",
+    "desktop": true,
+    "mobile": false,
+    "auth": "student"
+  },
+  {
+    "name": "16-blocked",
+    "path": "/blocked",
+    "desktop": true,
+    "mobile": false,
+    "auth": false
+  },
+  {
+    "name": "17-locked",
+    "path": "/locked",
+    "desktop": true,
+    "mobile": false,
+    "auth": false
+  },
+  {
+    "name": "20-comprehensive-exams-1",
+    "path": "/comprehensive-exams/1",
+    "desktop": true,
+    "mobile": true,
+    "auth": "student"
+  },
+  {
+    "name": "30-admin-home",
+    "path": "/admin",
+    "desktop": true,
+    "mobile": true,
+    "auth": "admin"
+  },
+  {
+    "name": "31-admin-students",
+    "path": "/admin/students",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "32-admin-courses",
+    "path": "/admin/courses",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "33-admin-exams",
+    "path": "/admin/exams",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "34-admin-monitoring",
+    "path": "/admin/monitoring",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "35-admin-homework",
+    "path": "/admin/homework",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "36-admin-payment-numbers",
+    "path": "/admin/payment-numbers",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "37-admin-finance",
+    "path": "/admin/finance",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "38-admin-topups",
+    "path": "/admin/topups",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "39-admin-forum",
+    "path": "/admin/forum",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "40-admin-center-codes",
+    "path": "/admin/center-codes",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "41-admin-pending-students",
+    "path": "/admin/pending-students",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "42-admin-plan",
+    "path": "/admin/plan",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "43-admin-security",
+    "path": "/admin/security",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "44-admin-settings",
+    "path": "/admin/settings",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "45-admin-stats-courses",
+    "path": "/admin/stats/courses",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "46-admin-stats-finance",
+    "path": "/admin/stats/finance",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  },
+  {
+    "name": "50-admin-comp-exams-course-1",
+    "path": "/admin/courses/1/comprehensive-exams",
+    "desktop": true,
+    "mobile": false,
+    "auth": "admin"
+  }
+]

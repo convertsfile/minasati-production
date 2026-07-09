@@ -22,8 +22,10 @@ export default function LockedPage() {
         return;
       }
       try {
+        // /api/auth/status is DEAD; use /api/auth/me. /auth/me returns a
+        // non-standard envelope {status:"success", data:UserResource}.
         const [statusRes, settingsRes] = await Promise.all([
-          fetch(`${API_URL}/api/auth/status`, {
+          fetch(`${API_URL}/api/auth/me`, {
             headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
           }),
           fetch(`${API_URL}/api/settings`, {
@@ -33,8 +35,9 @@ export default function LockedPage() {
 
         if (statusRes.ok) {
           const data = await statusRes.json();
-          const user = data.data?.user || data.data || data;
-          if (!user.is_blocked && user.status !== 'blocked') {
+          // Unwrap {status:"success", data:UserResource} → User
+          const user = data?.data?.data ?? data?.data ?? data;
+          if (user && !user.is_blocked && user.status !== 'blocked') {
             router.replace('/');
           }
         }

@@ -4,9 +4,13 @@ import axios, { AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'ax
 import Cookies from 'js-cookie';
 import { ApiResponse, ApiError } from '@/types/api';
 
-// 🚀 1. إعداد النسخة الأساسية
+const getBaseURL = () => {
+  const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  return url.endsWith('/api') ? url : `${url}/api`;
+};
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
+  baseURL: getBaseURL(),
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -37,6 +41,33 @@ api.interceptors.request.use(
 // returns `Promise<VerifyOtpResponse>`.
 api.interceptors.response.use(
   <T>(response: AxiosResponse<ApiResponse<T>>): T => {
+    // ⚠️ Special-case for /api/auth/me: the backend returns a non-standard
+    // {status:"success", data:UserResource} envelope via response()->json()
+    // (NOT the standard ApiResponse). Unwrap the inner `data` field here so
+    // every caller can treat /auth/me like a normal ApiResponse.
+    const reqUrl = response.config?.url || '';
+    if (typeof reqUrl === 'string' && reqUrl.includes('/auth/me')) {
+      const mePayload = response.data;
+      // Backend shape: {status:"success", data:UserResource}
+      // UserResource itself: {success:true, data:User, ...}
+      if (mePayload && typeof mePayload === 'object') {
+        if (mePayload.data && typeof mePayload.data === 'object' && 'success' in mePayload.data) {
+          return mePayload.data as T;
+        }
+        if (mePayload.data !== undefined) {
+          return mePayload.data as T;
+        }
+      }
+      return mePayload as T;
+    }
+    // ⚠️ Special-case for /api/exams/my-results: backend returns a raw
+    // {data:[...]} without the standard envelope. The interceptor previously
+    // returned `response.data.data as T` which was `undefined` because the
+    // outer object has no `data.success` pair. Return the outer object so
+    // callers can read `.data` directly.
+    if (typeof reqUrl === 'string' && reqUrl.includes('/exams/my-results')) {
+      return response.data as T;
+    }
     // نرجع البيانات مباشرة لكي لا نضطر لكتابة response.data.data في كل صفحة
     return response.data.data as T;
   },

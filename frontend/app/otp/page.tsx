@@ -47,6 +47,39 @@ function OTPContent() {
     if (storedDevOtp) {
       setDevOtp(storedDevOtp);
     }
+
+    // ⚠️ Trigger Firebase phone auth: the backend now requires the firebase
+    // ID token issued by Firebase, not a 6-digit OTP. We call
+    // signInWithPhoneNumber against the phone number stored during
+    // registration and cache the confirmationResult on window so the
+    // submit handler can exchange the 6-digit code for an ID token.
+    //
+    // If Firebase is not configured in this build (no env vars), the import
+    // will fail and the user will see a clear error on submit.
+    (async () => {
+      try {
+        const { getAuth, RecaptchaVerifier, signInWithPhoneNumber } = await import('firebase/auth');
+        const auth = getAuth();
+        // Phone number is stored in sessionStorage by the register page.
+        const phoneNumber = sessionStorage.getItem('register_phone');
+        if (!phoneNumber) {
+          // No phone available — cannot kick off Firebase phone auth.
+          return;
+        }
+        if (typeof window !== 'undefined' && !window.__firebaseRecaptchaVerifier) {
+          window.__firebaseRecaptchaVerifier = new RecaptchaVerifier(auth, 'firebase-recaptcha-container', {
+            size: 'invisible',
+          });
+        }
+        const appVerifier = window.__firebaseRecaptchaVerifier;
+        const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+        window.__firebaseConfirmationResult = confirmationResult;
+      } catch (fbErr) {
+        // Silent failure: the submit handler will surface a clear error if
+        // firebase_token cannot be produced.
+        console.warn('Firebase phone auth init failed (likely missing config):', fbErr);
+      }
+    })();
   }, [tempUserId]);
 
   useEffect(() => {
@@ -101,13 +134,48 @@ function OTPContent() {
     setLoading(true);
 
     try {
+      // ⚠️ The backend /api/auth/verify-otp endpoint requires
+      // { temp_user_id, firebase_token } — the firebase_token is the
+      // Firebase phone-auth ID token obtained from
+      //   signInWithPhoneNumber(...) → confirmationResult.confirm(code) →
+      //   user.getIdToken()
+      // The previous implementation sent a 6-digit OTP code, which the
+      // backend rejects with 422 ERR_VERIFICATION_FAILED.
+      //
+      // If Firebase is configured (env vars present), we trigger the
+      // confirmation flow against the cached confirmationResult and exchange
+      // the resulting ID token. Otherwise we surface a clear error and ask
+      // the user to contact support.
+      const { getAuth } = await import('firebase/auth');
+      const auth = getAuth();
+      // The confirmationResult is stashed on the window by the recaptcha /
+      // phone-auth flow that runs in a useEffect on mount.
+      const confirmationResult = window.__firebaseConfirmationResult;
+
+      let firebaseToken: string | null = null;
+      if (confirmationResult && typeof confirmationResult.confirm === 'function') {
+        try {
+          const credential = await confirmationResult.confirm(otpCode);
+          firebaseToken = await credential.user.getIdToken();
+        } catch (confirmErr: any) {
+          throw new Error(confirmErr?.message || 'كود التحقق غير صحيح');
+        }
+      } else {
+        // Firebase is not configured in this build, or the user did not
+        // trigger the SMS-send step. Surface a clear message rather than
+        // sending the wrong body shape to the backend.
+        throw new Error(
+          'تعذر إكمال التحقق عبر Firebase. يرجى إعادة إرسال الكود من صفحة التسجيل والمحاولة مرة أخرى.'
+        );
+      }
+
       const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json"
         },
-        body: JSON.stringify({ temp_user_id: tempUserId, otp: otpCode }),
+        body: JSON.stringify({ temp_user_id: tempUserId, firebase_token: firebaseToken }),
       });
 
       const data = await response.json();
@@ -419,6 +487,8 @@ function OTPContent() {
           }
         `}</style>
       </div>
+      {/* Invisible reCAPTCHA container required by Firebase phone auth */}
+      <div id="firebase-recaptcha-container" />
     </>
   );
 }

@@ -48,7 +48,9 @@ export default function AdminPlanPage() {
       }
 
       const userData = await authRes.json();
-      const user = userData.data?.user || userData.data || userData;
+      // /auth/me returns {status:"success", data:UserResource} →
+      // UserResource is {success, message, data:User}. Unwrap twice.
+      const user = userData?.data?.data ?? userData?.data ?? userData;
       const isAdmin = user?.is_admin === true || user?.is_admin === 1 || user?.isAdmin === true || user?.role === 'admin';
 
       if (!isAdmin) {

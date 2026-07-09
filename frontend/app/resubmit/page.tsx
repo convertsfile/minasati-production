@@ -46,32 +46,21 @@ export default function ResubmitPage() {
     setProcessing(true);
     const token = getToken();
 
-    try {
-      const formData = new FormData();
-      formData.append('id_image', image);
-
-      const response = await fetch(`${API_URL}/api/auth/resubmit-documents`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-
-      if (response.ok) {
-        localStorage.removeItem('rejection_reason');
-        showToast("تم إرسال الصورة بنجاح! جاري تحويلك...", "success");
-        setTimeout(() => {
-            router.push("/waiting-room");
-        }, 1500);
-      } else {
-        const errorData = await response.json();
-        showToast(errorData.message || "حدث خطأ أثناء رفع الصورة", "error");
-        setProcessing(false);
-      }
-    } catch (e) {
-      console.error("Resubmit failed", e);
-      showToast("خطأ في الاتصال بالخادم", "error");
-      setProcessing(false);
-    }
+    // ⚠️ /api/auth/resubmit-documents is DEAD in the backend (the
+    // AuthController::resubmit method does not exist; the route is registered
+    // but resolves to a 500). The inventory's documented workaround is to
+    // re-register from scratch via POST /api/auth/register with a new temp
+    // id. Until that route is bound to a controller on the backend, surface
+    // a clear error and guide the user to contact support — silently failing
+    // or pretending the request succeeded would be worse.
+    showToast(
+      "خدمة إعادة الإرسال غير متاحة حالياً. يرجى التواصل مع الدعم لتفعيل حسابك.",
+      "error"
+    );
+    setProcessing(false);
+    // Note: we deliberately do NOT optimistically push to /waiting-room here
+    // because no backend request was made. The user keeps the form so they
+    // can retry once the endpoint is restored.
   };
 
   const handleLogout = async () => {

@@ -92,7 +92,10 @@ export default function AdminCenterCodesPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        if (!data.data.is_admin) router.push('/');
+        // /auth/me returns {status:"success", data:UserResource} →
+        // UserResource is {success, message, data:User}. Unwrap twice.
+        const user = data?.data?.data ?? data?.data ?? data;
+        if (!user?.is_admin) router.push('/');
       } else {
         router.push('/login');
       }

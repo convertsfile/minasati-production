@@ -27,7 +27,7 @@ export default function BlockedPage() {
         const token = getToken();
         if (!token) return;
 
-        const response = await fetch(`${API_URL}/api/auth/status`, {
+        const response = await fetch(`${API_URL}/api/auth/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
             Accept: 'application/json'
@@ -36,7 +36,9 @@ export default function BlockedPage() {
 
         if (response.ok) {
           const data = await response.json();
-          const user = data.data?.user || data.data || data;
+          // /auth/me returns a non-standard envelope: {status:"success", data:UserResource}
+          // where UserResource is itself an ApiResponse: {success, message, data:User}
+          const user = data?.data?.data ?? data?.data ?? data;
           setUserData({
             fullName: user.full_name || user.fullName || '',
           });

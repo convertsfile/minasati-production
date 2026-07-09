@@ -1,0 +1,14 @@
+[
+  {
+    "name": "60-health-live",
+    "path": "/health/live"
+  },
+  {
+    "name": "61-health-ready",
+    "path": "/health/ready"
+  },
+  {
+    "name": "62-api-metrics",
+    "path": "/api/metrics"
+  }
+]

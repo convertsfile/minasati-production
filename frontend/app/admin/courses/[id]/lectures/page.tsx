@@ -29,7 +29,9 @@ interface Lecture {
   m3u8_path: string | null;
   video_status: string;
   video_duration: number | null;
-  attachments?: { id: number; file_name: string; file_path: string; }[];
+  // Backend returns attachments with `file_url` (snake_case) as a 10-min
+  // signed B2 URL per the inventory §32.3 holdover. Read both casings.
+  attachments?: { id: number; file_name?: string; fileName?: string; file_url?: string; fileUrl?: string; file_path?: string; filePath?: string; }[];
 }
 
 interface Course {
@@ -206,8 +208,11 @@ export default function AdminLecturesPage() {
     try {
       const token = getToken();
       const url = editingLecture ? `${API_URL}/api/admin/lectures/${editingLecture.id}` : `${API_URL}/api/admin/courses/${courseId}/lectures`;
+      // ⚠️ Backend registers PATCH /api/admin/lectures/{lecture} for updates
+      // (Route::patch(...)). Using PUT here 404s because the route table does
+      // not include a PUT binding.
       const res = await fetch(url, {
-        method: editingLecture ? 'PUT' : 'POST',
+        method: editingLecture ? 'PATCH' : 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'Accept': 'application/json' },
         body: JSON.stringify({ ...formData, order_index: parsedOrderIndex }),
       });
@@ -561,7 +566,7 @@ export default function AdminLecturesPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       {lecture.attachments.map(att => (
                         <div key={att.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--surface)', padding: '0.5rem', borderRadius: '6px' }}>
-                          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{att.file_name}</span>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{att.file_name ?? att.fileName ?? att.file_path ?? att.filePath ?? 'ملف'}</span>
                           <button onClick={() => handleDeleteAttachment(lecture.id, att.id)} className="btn btn-sm flex items-center gap-1" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: '#ef4444', backgroundColor: 'transparent', border: '1px solid #ef4444', cursor: 'pointer' }}><TrashIcon size={12} /> حذف</button>
                         </div>
                       ))}

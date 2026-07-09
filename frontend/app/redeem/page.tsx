@@ -39,12 +39,16 @@ export default function RedeemCodePage() {
         return;
       }
 
-      const statusRes = await fetch(`${API_URL}/api/auth/status`, {
+      // /api/auth/status is DEAD; use /api/auth/me. The /me endpoint returns
+      // a non-standard envelope {status:"success", data:UserResource}.
+      const statusRes = await fetch(`${API_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
       });
       if (statusRes.ok) {
         const statusData = await statusRes.json();
-        if (statusData.data?.status === 'pending') {
+        // Unwrap nested envelopes to reach the User object
+        const user = statusData?.data?.data ?? statusData?.data ?? statusData;
+        if (user && user.status === 'pending') {
           router.replace('/waiting-room');
         }
       }
@@ -66,7 +70,7 @@ export default function RedeemCodePage() {
         return;
       }
 
-      const response = await fetch(`${API_URL}/api/student/center-codes/redeem`, {
+      const response = await fetch(`${API_URL}/api/center-codes/redeem`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

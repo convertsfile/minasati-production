@@ -47,14 +47,30 @@ export default function Navbar({ transparent = false }: NavbarProps) {
         .catch(() => {})
         .finally(() => setAuthReady(true));
 
-      // جلب حالة الاشتراك في الكورسات
-      fetch(`${API_URL}/api/auth/status`, {
+      // جلب حالة الاشتراك في الكورسات — /api/auth/status is DEAD in backend,
+      // use /api/auth/me (non-standard envelope) and read hasCourses from the
+      // user record. We treat status === 'active' and any purchased course as
+      // "has courses" for the navbar badge.
+      fetch(`${API_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${authToken}`, Accept: 'application/json' },
       })
         .then(res => res.ok ? res.json() : null)
         .then(data => {
-          if (data?.data) {
-            setHasCourses(!!data.data.hasCourses);
+          if (!data) return;
+          // Wire shape: { status: "success", data: UserResource } OR UserResource
+          const user = data?.data?.data ?? data?.data ?? data;
+          // No hasCourses field on /auth/me — derive from `my-courses` instead.
+          if (user && (user.status === 'active' || user.status === 'approved')) {
+            // Try a lightweight follow-up; ignore failure (hasCourses stays false).
+            fetch(`${API_URL}/api/courses/my-courses`, {
+              headers: { Authorization: `Bearer ${authToken}`, Accept: 'application/json' },
+            })
+              .then(r => r.ok ? r.json() : null)
+              .then(payload => {
+                const list = payload?.data?.data || payload?.data || [];
+                setHasCourses(Array.isArray(list) && list.length > 0);
+              })
+              .catch(() => {});
           }
         })
         .catch(() => {});

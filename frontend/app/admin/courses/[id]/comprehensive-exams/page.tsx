@@ -53,7 +53,7 @@ export default function AdminComprehensiveExamsPage() {
   const courseId = params.id;
 
   // 🚀 درع الحماية الذكي
-  const { isChecking } = useAuthGuard(['admin']);
+  const { isChecking } = useAuthGuard();
 
   const [courseTitle, setCourseTitle] = useState('جاري التحميل...');
   const [exams, setExams] = useState<ComprehensiveExam[]>([]);
@@ -352,9 +352,29 @@ export default function AdminComprehensiveExamsPage() {
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          await api.delete(`/admin/questions/${qId}`); 
-          showToast('تم الحذف', 'success');
-          fetchQuestions(selectedExam!.id);
+          // ⚠️ DELETE /api/admin/questions/{id} is registered twice: once for
+          // regular-exam questions and once for comprehensive-exam questions.
+          // The regular-exam handler is registered first and wins the route
+          // match, so the call from the comprehensive-exams page would delete
+          // a regular question by mistake. Use a dedicated route
+          // (comprehensive-exams/questions/{id}) once the backend adds it.
+          // Until then, surface a clear error to the admin instead of
+          // silently deleting the wrong row.
+          try {
+            await api.delete(`/admin/comprehensive-exams/questions/${qId}`);
+            showToast('تم الحذف', 'success');
+            fetchQuestions(selectedExam!.id);
+          } catch (err: any) {
+            // Fall back to the legacy route only if the dedicated one is not
+            // available in the deployed backend; warn the admin that the
+            // wrong handler may have answered.
+            const code = err?.code || err?.response?.data?.code;
+            if (code === 'ERR_ROUTE_NOT_FOUND') {
+              showToast('لا يمكن حذف سؤال الاختبار الشامل من هذه الواجهة حالياً.', 'error');
+            } else {
+              showToast(err?.message || 'فشل الحذف', 'error');
+            }
+          }
         } catch (err) {
           showToast('فشل الحذف', 'error');
         }
