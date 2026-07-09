@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\BackblazeStorageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -16,6 +17,23 @@ class UserResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        // SEC-MAJOR-02: the id_image column stores a storage KEY, not a URL.
+        // The historical setup stored an unsigned B2 URL in id_image_url,
+        // which let anyone with the link access the ID card. The new
+        // behaviour: id_image_url is a 5-minute signed URL computed
+        // fresh on every response (so it cannot be cached or shared).
+        //
+        // We also authorise: only admins should be able to see ID cards
+        // (the resource is the only place this filter is applied).
+        $viewer = $request->user();
+        $isAdminViewer = $viewer && $viewer->role === 'admin';
+
+        $signedIdImageUrl = null;
+        if ($isAdminViewer && ! empty($this->id_image)) {
+            $signedIdImageUrl = app(BackblazeStorageService::class)
+                ->getSignedUrl($this->id_image, 300);
+        }
+
         return [
             'id' => $this->id,
             'fullName' => $this->full_name,
@@ -28,8 +46,8 @@ class UserResource extends JsonResource
             'parentJob' => $this->parent_job,
             'governorate' => $this->governorate,
 
-            // 🚀 دمج رابط الصورة الكامل لتسهيل العرض في تطبيقات الموبايل والويب
-            'idImageUrl' => $this->id_image_url,
+            // 🚀 Signed URL computed per-request (admin only).
+            'idImageUrl' => $signedIdImageUrl,
 
             'status' => $this->status,
             'walletBalance' => $this->wallet_balance ?? 0,

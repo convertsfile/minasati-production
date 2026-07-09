@@ -64,6 +64,18 @@ class AdminSecurityController extends Controller
             ->orderByDesc('fatal_strikes')
             ->paginate(50); // 🚀 ضروري للأنظمة الكبيرة
 
+        // 🚀 إصلاح N+1: جلب آخر مخالفة مميتة لكل طالب في استعلام واحد مجمَّع
+        $userIds = $students->getCollection()->pluck('id');
+        $lastFatalViolations = VideoViolation::whereIn('user_id', $userIds)
+            ->whereIn('violation_type', self::FATAL_VIOLATIONS)
+            ->whereIn('id', function ($sub) {
+                $sub->selectRaw('MAX(id)')
+                    ->from('video_violations')
+                    ->whereIn('violation_type', self::FATAL_VIOLATIONS)
+                    ->groupBy('user_id');
+            })
+            ->pluck('created_at', 'user_id');
+
         $students->getCollection()->transform(fn($user) => [
             'id' => $user->id,
             'fullName' => $user->full_name,
@@ -71,10 +83,9 @@ class AdminSecurityController extends Controller
             'violationsCount' => $user->fatal_strikes,
             'isBlocked' => (bool) $user->is_blocked,
             'unblockCount' => $user->unblock_count ?? 0,
-            'lastViolation' => $user->videoViolations()
-                ->whereIn('violation_type', self::FATAL_VIOLATIONS)
-                ->latest()
-                ->first()?->created_at->format('Y-m-d H:i:s'),
+            'lastViolation' => isset($lastFatalViolations[$user->id])
+                ? $lastFatalViolations[$user->id]->format('Y-m-d H:i:s')
+                : null,
         ]);
 
         return ApiResponse::paginated($students, 'تم جلب الطلاب المخالفين');

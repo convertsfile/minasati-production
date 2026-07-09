@@ -30,10 +30,11 @@ class ForumController extends Controller
             ->paginate(15);
 
         // 🚀 تنظيف البيانات وجلب الروابط السحابية الصحيحة للصور
+        // SEC-MAJOR-02: signed URLs (5-minute lifetime).
         $posts->getCollection()->transform(fn($post) => [
             'id' => $post->id,
             'body' => $post->body,
-            'imageUrl' => $post->image ? $this->b2Service->getUrl($post->image) : null,
+            'imageUrl' => $post->image ? $this->b2Service->getSignedUrl($post->image, 300) : null,
             'authorName' => $post->user->full_name,
             'isOwn' => $post->user_id === $user->id,
             'adminReply' => $post->admin_reply,
@@ -74,7 +75,7 @@ class ForumController extends Controller
         return ApiResponse::success([
             'id' => $post->id,
             'body' => $post->body,
-            'imageUrl' => $post->image ? $this->b2Service->getUrl($post->image) : null,
+            'imageUrl' => $post->image ? $this->b2Service->getSignedUrl($post->image, 300) : null,
         ], 'تم نشر سؤالك بنجاح', 201);
     }
 

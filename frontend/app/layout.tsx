@@ -1,8 +1,7 @@
-// frontend/app/layout.tsx
 import './globals.css';
 import type { Metadata } from 'next';
 import { ThemeProvider } from './components/ThemeProvider';
-import AuthProvider from './components/providers/AuthProvider';
+import BlockedUserCheck from './components/BlockedUserCheck';
 
 export const metadata: Metadata = {
   title: 'منصتنا | Minassati',
@@ -20,14 +19,18 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
-        {/* ... (نفس إعدادات الخطوط الممتازة الخاصة بك) ... */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link 
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" 
+          rel="stylesheet" 
+        />
       </head>
       <body className="antialiased" suppressHydrationWarning>
         <ThemeProvider>
-          {/* 🚀 AuthProvider يقوم بتهيئة Zustand وجلب بيانات الطالب لمرة واحدة فقط */}
-          <AuthProvider>
+          <BlockedUserCheck>
             {children}
-          </AuthProvider>
+          </BlockedUserCheck>
         </ThemeProvider>
       </body>
     </html>

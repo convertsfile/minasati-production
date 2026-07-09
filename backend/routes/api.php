@@ -14,37 +14,39 @@ Broadcast::routes(['middleware' => ['auth:sanctum']]);
 // 1. Auth & Security
 use App\Http\Controllers\Admin\AdminSecurityController;
 use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\AdminWalletController; // 🚀 RELIABILITY-MAJOR-01: liveness + readiness endpoints
+use App\Http\Controllers\Admin\CenterCodeController as AdminCenterCodeController; // 🚀 RELIABILITY-MAJOR-02: Prometheus /metrics endpoint
 // 2. Admin Controllers
-use App\Http\Controllers\Admin\AdminWalletController;
-use App\Http\Controllers\Admin\CenterCodeController as AdminCenterCodeController;
+use App\Http\Controllers\Admin\ComprehensiveExamController;
 use App\Http\Controllers\Admin\CourseController as AdminCourseController;
 use App\Http\Controllers\Admin\ExamController as AdminExamController;
 use App\Http\Controllers\Admin\FinanceController;
 use App\Http\Controllers\Admin\ForumController as AdminForumController;
+use App\Http\Controllers\Admin\HomeworkController as AdminHomeworkController;
 use App\Http\Controllers\Admin\LectureController as AdminLectureController;
 use App\Http\Controllers\Admin\PaymentNumberController;
 use App\Http\Controllers\Admin\SettingsController;
-use App\Http\Controllers\Admin\StudentProgressController;
 use App\Http\Controllers\Admin\StudentMonitoringController;
+use App\Http\Controllers\Admin\StudentProgressController;
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\HealthController;
+use App\Http\Controllers\MetricsController;
 use App\Http\Controllers\Payment\FawryController;
-use App\Http\Controllers\Payment\VodafoneCashController;
-use App\Http\Controllers\Admin\ComprehensiveExamController;
 // 3. Student Controllers
+use App\Http\Controllers\Payment\VodafoneCashController;
 use App\Http\Controllers\Student\CenterCodeController as StudentCenterCodeController;
+use App\Http\Controllers\Student\ComprehensiveExamController as StudentComprehensiveExamController;
 use App\Http\Controllers\Student\CourseController as StudentCourseController;
 use App\Http\Controllers\Student\ExamController as StudentExamController;
 use App\Http\Controllers\Student\ForumController as StudentForumController;
+use App\Http\Controllers\Student\HomeworkController as StudentHomeworkController;
 use App\Http\Controllers\Student\LectureProgressController;
+// 4. Video & Wallet
 use App\Http\Controllers\Student\NotificationController;
 use App\Http\Controllers\Student\VideoViolationController;
-use App\Http\Controllers\Student\ComprehensiveExamController as StudentComprehensiveExamController;
-// 4. Video & Wallet
 use App\Http\Controllers\Video\VideoEngineController;
 use App\Http\Controllers\Wallet\WalletController;
 use App\Http\Controllers\Wallet\WalletTopupController;
-use App\Http\Controllers\Student\HomeworkController as StudentHomeworkController;
-use App\Http\Controllers\Admin\HomeworkController as AdminHomeworkController;
 
 /*
 |--------------------------------------------------------------------------
@@ -63,6 +65,30 @@ Route::prefix('courses')->group(function () {
     Route::get('/', [StudentCourseController::class, 'index']);
     Route::get('/{course}', [StudentCourseController::class, 'show'])->where('course', '[0-9]+');
 });
+
+// 🚀 RELIABILITY-MAJOR-01: split liveness vs. readiness.
+// /up remains a shallow liveness check (back-compat). /health/live
+// and /health/ready give orchestrators the standard k8s split —
+// readiness pings MySQL/cache/queue/B2 and returns 503 if any
+// required dependency is down, so traffic is drained from a
+// degraded instance instead of piling on 3-second DB hangs.
+Route::prefix('health')->group(function () {
+    Route::get('/live', [HealthController::class, 'live']);
+    Route::get('/ready', [HealthController::class, 'ready']);
+});
+
+// 🚀 RELIABILITY-MAJOR-02: Prometheus metrics endpoint.
+// Exposes counters/gauges/histograms in text exposition format.
+// Prometheus scrapers do not carry auth headers, so the route is
+// locked down in two layers:
+//   1. `restrict_to_internal_ips` middleware — enforces a CIDR
+//      allowlist (METRICS_ALLOWED_IPS, default loopback + RFC1918).
+//      Non-allowlisted callers get 404 so the endpoint's existence
+//      is not leaked to a port-scan.
+//   2. `throttle:60,1` — caps scrape rate at 60/min to prevent
+//      burst DoS amplification.
+Route::get('/metrics', MetricsController::class)
+    ->middleware(['restrict_to_internal_ips', 'throttle:60,1']);
 
 /*
 |--------------------------------------------------------------------------

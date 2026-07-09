@@ -8,6 +8,21 @@ use Illuminate\Support\Str; // 🚀 استدعاء مكتبة النصوص
 
 class FileUploadService
 {
+    /**
+     * SEC-MAJOR-02: all user uploads are private.
+     *
+     * Historical: the platform used a "uploads/" prefix to route user
+     * uploads to the public B2 bucket, then returned a plain unsigned
+     * URL. That meant anyone with the URL could access ID-card images,
+     * payment-proof screenshots, homework submissions, and admin
+     * attachments without authentication.
+     *
+     * New behaviour: uploads go to the PRIVATE bucket and the URL returned
+     * is a 5-minute signed download authorization. Controllers that need
+     * to surface the URL to a logged-in user must call
+     * BackblazeStorageService::getSignedUrl() with a controller-side
+     * authorization check.
+     */
     private const BUCKET_PREFIX = 'uploads';
 
     // 🚀 تطبيق حقن التبعية (Dependency Injection) لمعمارية نظيفة
@@ -37,12 +52,15 @@ class FileUploadService
             $success = $this->b2Service->upload($file->getRealPath(), $key);
 
             if ($success) {
-                $url = $this->b2Service->getUrl($key);
-                Log::info("Successfully uploaded image to B2: {$url}");
+                // SEC-MAJOR-02: store a SIGNED URL with a 5-minute lifetime
+                // instead of a plain unsigned URL. The raw key is returned
+                // alongside it so the controller can re-sign on demand.
+                $signedUrl = $this->b2Service->getSignedUrl($key, 300);
+                Log::info("Successfully uploaded file to B2 (private): {$key}");
 
                 return [
                     'public_id' => $key,
-                    'url' => $url,
+                    'url' => $signedUrl,
                     'format' => $extension,
                 ];
             }

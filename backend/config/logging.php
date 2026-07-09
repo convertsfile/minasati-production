@@ -73,6 +73,25 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // 🚀 RELIABILITY-MAJOR-03: structured JSON log channel.
+        // Each line is a single JSON object that can be ingested
+        // directly by Loki/Elasticsearch/Datadog/Cloud Logging
+        // without sidecar regex parsing. Flip LOG_CHANNEL=json in
+        // production to use this; the env-level default in
+        // .env.example still ships as 'stack' for back-compat.
+        'json' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/laravel.json'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+            'formatter' => Monolog\Formatter\JsonFormatter::class,
+            'formatter_with' => [
+                'batchMode' => Monolog\Formatter\JsonFormatter::BATCH_MODE_JSON,
+                'appendNewline' => true,
+            ],
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

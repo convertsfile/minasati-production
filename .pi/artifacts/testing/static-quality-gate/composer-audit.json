@@ -1,0 +1,12 @@
+[30;43mhttps://repo.packagist.org could not be fully loaded (curl error 60 while downloading https://repo.packagist.org/packages.json: SSL certificate problem: unable to get local issuer certificate), package information was loaded from the local cache and may be out of date[39;49m
+[37;41mThe following exception indicates a possible issue with the Avast Firewall[39;49m
+[37;41mCheck https://getcomposer.org/local-issuer for details[39;49m
+
+[33mIn CurlDownloader.php line 401:[39m
+[37;41m                                                                                                                       [39;49m
+[37;41m  curl error 60 while downloading https://packagist.org/api/security-advisories/: SSL certificate problem: unable to   [39;49m
+[37;41m  get local issuer certificate                                                                                         [39;49m
+[37;41m                                                                                                                       [39;49m
+
+[32maudit [--no-dev] [-f|--format FORMAT] [--locked] [--abandoned ABANDONED] [--ignore-severity IGNORE-SEVERITY] [--ignore-unreachable][39m
+

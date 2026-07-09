@@ -8,6 +8,17 @@ use Illuminate\Support\Facades\Log;
 
 class BackblazeStorageService
 {
+    /**
+     * SEC-MAJOR-02: explicit allow-list for keys that may live in the public
+     * bucket and be served via unsigned URLs. Anything not matched here is
+     * routed to the private bucket and must be served via getSignedUrl().
+     *
+     * "uploads/*" is intentionally NOT in this list — the historical setup
+     * shipped user ID cards, payment proofs, and homework submissions to
+     * the public bucket, which let anyone with the URL access them.
+     */
+    private const PUBLIC_BUCKET_PREFIX = 'public-assets/';
+
     private ?string $keyId;
     private ?string $applicationKey;
     private ?string $privateBucketId;
@@ -84,7 +95,12 @@ class BackblazeStorageService
             return false;
         }
 
-        $isPublic = str_starts_with($key, 'uploads/');
+        // SEC-MAJOR-02: every "uploads/*" key goes to the PRIVATE bucket.
+        // The public bucket is reserved for non-sensitive, intentionally
+        // public assets (lesson thumbnails, marketing assets, etc.). The
+        // public/private decision is now driven by the explicit
+        // self::PUBLIC_BUCKET_PREFIX constant, not by string-matching.
+        $isPublic = str_starts_with($key, self::PUBLIC_BUCKET_PREFIX);
 
         try {
             $uploadUrlData = $this->getUploadUrl($isPublic);
@@ -146,8 +162,17 @@ class BackblazeStorageService
             throw new \Exception('Access to raw videos is forbidden');
         }
 
-        $isPublic = str_starts_with($key, 'uploads/');
-        $bucketName = $isPublic ? $this->publicBucketName : $this->privateBucketName;
+        // SEC-MAJOR-02: an unsigned URL is only safe for keys that live in
+        // the public bucket. Refuse to mint one for any user-uploaded key.
+        $isPublic = $this->isPublicKey($key);
+        if (! $isPublic) {
+            Log::warning('BackblazeStorageService::getUrl() called for a non-public key. Use getSignedUrl() instead.', [
+                'key_prefix' => $this->keyPrefix($key),
+            ]);
+            return '';
+        }
+
+        $bucketName = $this->publicBucketName;
 
         // 🚀 إزالة الرابط الثابت واستخدام الرابط الديناميكي
         $baseUrl = $this->downloadUrl ?? 'https://f005.backblazeb2.com';
@@ -161,12 +186,22 @@ class BackblazeStorageService
             throw new \Exception('Access to raw videos is forbidden');
         }
         if (!$this->authenticate()) {
-            return $this->getUrl($key);
+            // If B2 is unreachable, refuse to leak the file via a public URL.
+            Log::error('B2 authentication failed while generating signed URL; returning empty.', ['key' => $key]);
+            return '';
         }
 
-        $isPublic = str_starts_with($key, 'uploads/');
+        $isPublic = $this->isPublicKey($key);
         $bucketName = $isPublic ? $this->publicBucketName : $this->privateBucketName;
         $bucketId = $isPublic ? $this->publicBucketId : $this->privateBucketId;
+
+        if (empty($bucketId)) {
+            Log::error('B2 bucket id is not configured; cannot generate signed URL.', [
+                'is_public' => $isPublic,
+                'key' => $key,
+            ]);
+            return '';
+        }
 
         $response = Http::withToken($this->authToken, '')
             ->withoutVerifying()
@@ -184,7 +219,11 @@ class BackblazeStorageService
             return $url . '?Authorization=' . rawurlencode($data['authorizationToken']);
         }
 
-        return $this->getUrl($key);
+        Log::error('Failed to generate signed URL', [
+            'status' => $response->status(),
+            'body' => $response->body(),
+        ]);
+        return '';
     }
 
     public function delete(string $key): bool
@@ -193,7 +232,7 @@ class BackblazeStorageService
             return false;
         }
 
-        $isPublic = str_starts_with($key, 'uploads/');
+        $isPublic = $this->isPublicKey($key);
 
         try {
             $fileId = $this->getFileId($key, $isPublic);
@@ -242,6 +281,22 @@ class BackblazeStorageService
         }
 
         return null;
+    }
+
+    /**
+     * SEC-MAJOR-02: a key is "public" (allowed in the public bucket) ONLY
+     * if its top-level prefix is in the explicit allow-list. By default
+     * NO user-uploaded key is public.
+     */
+    private function isPublicKey(string $key): bool
+    {
+        return str_starts_with($key, self::PUBLIC_BUCKET_PREFIX);
+    }
+
+    private function keyPrefix(string $key): string
+    {
+        $slash = strpos($key, '/');
+        return $slash === false ? $key : substr($key, 0, $slash);
     }
 
 }

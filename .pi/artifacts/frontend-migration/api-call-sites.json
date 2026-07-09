@@ -1,0 +1,1179 @@
+{
+  "frontendRoot": "C:/Users/drhab/OneDrive/Desktop/new-minasaati/frontend",
+  "sourceFrontendRoot": "C:/Users/drhab/OneDrive/Desktop/minasaati-last-latest-minasa/frontend",
+  "generatedBy": "frontend-port",
+  "totalCallSites": 161,
+  "filesWithCalls": [
+    "app/admin/center-codes/page.tsx",
+    "app/admin/courses/[id]/comprehensive-exams/page.tsx",
+    "app/admin/courses/[id]/exams/page.tsx",
+    "app/admin/courses/[id]/lectures/page.tsx",
+    "app/admin/courses/page.tsx",
+    "app/admin/exams/page.tsx",
+    "app/admin/finance/page.tsx",
+    "app/admin/forum/page.tsx",
+    "app/admin/homework/page.tsx",
+    "app/admin/monitoring/page.tsx",
+    "app/admin/page.tsx",
+    "app/admin/payment-numbers/page.tsx",
+    "app/admin/pending-students/page.tsx",
+    "app/admin/plan/page.tsx",
+    "app/admin/security/page.tsx",
+    "app/admin/settings/page.tsx",
+    "app/admin/stats/courses/page.tsx",
+    "app/admin/stats/finance/page.tsx",
+    "app/admin/students/page.tsx",
+    "app/admin/topups/page.tsx",
+    "app/blocked/page.tsx",
+    "app/components/BlockedUserCheck.tsx",
+    "app/components/Navbar.tsx",
+    "app/comprehensive-exams/[id]/page.tsx",
+    "app/courses/[id]/page.tsx",
+    "app/courses/page.tsx",
+    "app/dashboard/page.tsx",
+    "app/exams/[lectureId]/page.tsx",
+    "app/forum/page.tsx",
+    "app/lectures/[id]/page.tsx",
+    "app/locked/page.tsx",
+    "app/login/page.tsx",
+    "app/otp/page.tsx",
+    "app/page.tsx",
+    "app/redeem/page.tsx",
+    "app/register/page.tsx",
+    "app/resubmit/page.tsx",
+    "app/waiting-room/page.tsx",
+    "app/wallet/page.tsx",
+    "components/SecureVideoPlayer.tsx",
+    "e2e/security.spec.ts",
+    "services/auth.service.ts"
+  ],
+  "calls": [
+    {
+      "file": "app/admin/center-codes/page.tsx",
+      "line": 90,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/me`"
+    },
+    {
+      "file": "app/admin/center-codes/page.tsx",
+      "line": 107,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/courses`"
+    },
+    {
+      "file": "app/admin/center-codes/page.tsx",
+      "line": 127,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/courses/${courseId}/lectures`"
+    },
+    {
+      "file": "app/admin/center-codes/page.tsx",
+      "line": 160,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/center-codes?${params}`"
+    },
+    {
+      "file": "app/admin/center-codes/page.tsx",
+      "line": 187,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/center-codes/generate`"
+    },
+    {
+      "file": "app/admin/center-codes/page.tsx",
+      "line": 229,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/center-codes/export?course_id=${filterCourse}`"
+    },
+    {
+      "file": "app/admin/courses/[id]/comprehensive-exams/page.tsx",
+      "line": 125,
+      "kind": "axios-instance",
+      "method": "GET",
+      "endpoint": "`/admin/courses/${courseId}`"
+    },
+    {
+      "file": "app/admin/courses/[id]/comprehensive-exams/page.tsx",
+      "line": 135,
+      "kind": "axios-instance",
+      "method": "GET",
+      "endpoint": "`/admin/courses/${courseId}/comprehensive-exams`"
+    },
+    {
+      "file": "app/admin/courses/[id]/comprehensive-exams/page.tsx",
+      "line": 180,
+      "kind": "axios-instance",
+      "method": "GET",
+      "endpoint": "`/admin/comprehensive-exams/${examId}/questions`"
+    },
+    {
+      "file": "app/admin/courses/[id]/comprehensive-exams/page.tsx",
+      "line": 215,
+      "kind": "axios-instance",
+      "method": "PUT",
+      "endpoint": "`/admin/comprehensive-exams/${selectedExam.id}`"
+    },
+    {
+      "file": "app/admin/courses/[id]/comprehensive-exams/page.tsx",
+      "line": 218,
+      "kind": "axios-instance",
+      "method": "POST",
+      "endpoint": "`/admin/courses/${courseId}/comprehensive-exams`"
+    },
+    {
+      "file": "app/admin/courses/[id]/comprehensive-exams/page.tsx",
+      "line": 237,
+      "kind": "axios-instance",
+      "method": "DELETE",
+      "endpoint": "`/admin/comprehensive-exams/${examId}`"
+    },
+    {
+      "file": "app/admin/courses/[id]/comprehensive-exams/page.tsx",
+      "line": 254,
+      "kind": "axios-instance",
+      "method": "POST",
+      "endpoint": "'/admin/questions/upload-image'"
+    },
+    {
+      "file": "app/admin/courses/[id]/comprehensive-exams/page.tsx",
+      "line": 288,
+      "kind": "axios-instance",
+      "method": "POST",
+      "endpoint": "'/admin/questions/upload-image'"
+    },
+    {
+      "file": "app/admin/courses/[id]/comprehensive-exams/page.tsx",
+      "line": 326,
+      "kind": "axios-instance",
+      "method": "POST",
+      "endpoint": "`/admin/comprehensive-exams/${selectedExam.id}/questions`"
+    },
+    {
+      "file": "app/admin/courses/[id]/comprehensive-exams/page.tsx",
+      "line": 355,
+      "kind": "axios-instance",
+      "method": "DELETE",
+      "endpoint": "`/admin/questions/${qId}`"
+    },
+    {
+      "file": "app/admin/courses/[id]/exams/page.tsx",
+      "line": 122,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/courses/${courseId}/lectures`"
+    },
+    {
+      "file": "app/admin/courses/[id]/exams/page.tsx",
+      "line": 150,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/lectures/${selectedLectureId}/exams`"
+    },
+    {
+      "file": "app/admin/courses/[id]/exams/page.tsx",
+      "line": 168,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/lectures/${selectedLectureId}/exams`"
+    },
+    {
+      "file": "app/admin/courses/[id]/exams/page.tsx",
+      "line": 199,
+      "kind": "fetch",
+      "method": "DELETE",
+      "endpoint": "`${API_URL}/api/admin/exams/${examId}`"
+    },
+    {
+      "file": "app/admin/courses/[id]/exams/page.tsx",
+      "line": 224,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/questions/upload-image`"
+    },
+    {
+      "file": "app/admin/courses/[id]/exams/page.tsx",
+      "line": 281,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/questions/upload-image`"
+    },
+    {
+      "file": "app/admin/courses/[id]/exams/page.tsx",
+      "line": 337,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/exams/${selectedExam.id}/questions`"
+    },
+    {
+      "file": "app/admin/courses/[id]/exams/page.tsx",
+      "line": 379,
+      "kind": "fetch",
+      "method": "DELETE",
+      "endpoint": "`${API_URL}/api/admin/questions/${questionId}`"
+    },
+    {
+      "file": "app/admin/courses/[id]/lectures/page.tsx",
+      "line": 89,
+      "kind": "echo-init",
+      "method": "ECHO_INIT",
+      "endpoint": "new Echo({...})"
+    },
+    {
+      "file": "app/admin/courses/[id]/lectures/page.tsx",
+      "line": 97,
+      "kind": "broadcast-auth",
+      "method": "CONFIG",
+      "endpoint": "${API_URL}/api/broadcasting/auth"
+    },
+    {
+      "file": "app/admin/courses/[id]/lectures/page.tsx",
+      "line": 114,
+      "kind": "echo-private",
+      "method": "ECHO-PRIVATE",
+      "endpoint": "channelName"
+    },
+    {
+      "file": "app/admin/courses/[id]/lectures/page.tsx",
+      "line": 174,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/courses/${courseId}`"
+    },
+    {
+      "file": "app/admin/courses/[id]/lectures/page.tsx",
+      "line": 175,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/courses/${courseId}/lectures`"
+    },
+    {
+      "file": "app/admin/courses/[id]/lectures/page.tsx",
+      "line": 209,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "url"
+    },
+    {
+      "file": "app/admin/courses/[id]/lectures/page.tsx",
+      "line": 232,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/lectures/${lectureId}/upload-ticket`"
+    },
+    {
+      "file": "app/admin/courses/[id]/lectures/page.tsx",
+      "line": 277,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/lectures/${lectureId}/start-processing`"
+    },
+    {
+      "file": "app/admin/courses/[id]/lectures/page.tsx",
+      "line": 302,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/lectures/${lectureId}/cancel-upload`"
+    },
+    {
+      "file": "app/admin/courses/[id]/lectures/page.tsx",
+      "line": 324,
+      "kind": "fetch",
+      "method": "DELETE",
+      "endpoint": "`${API_URL}/api/admin/lectures/${lectureId}/video`"
+    },
+    {
+      "file": "app/admin/courses/[id]/lectures/page.tsx",
+      "line": 341,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/lectures/${lectureId}/attachments`"
+    },
+    {
+      "file": "app/admin/courses/[id]/lectures/page.tsx",
+      "line": 365,
+      "kind": "fetch",
+      "method": "DELETE",
+      "endpoint": "`${API_URL}/api/admin/lectures/${lectureId}/attachments/${attachmentId}`"
+    },
+    {
+      "file": "app/admin/courses/[id]/lectures/page.tsx",
+      "line": 381,
+      "kind": "fetch",
+      "method": "DELETE",
+      "endpoint": "`${API_URL}/api/admin/lectures/${id}`"
+    },
+    {
+      "file": "app/admin/courses/page.tsx",
+      "line": 65,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/courses`"
+    },
+    {
+      "file": "app/admin/courses/page.tsx",
+      "line": 96,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "url"
+    },
+    {
+      "file": "app/admin/courses/page.tsx",
+      "line": 137,
+      "kind": "fetch",
+      "method": "DELETE",
+      "endpoint": "`${API_URL}/api/admin/courses/${id}`"
+    },
+    {
+      "file": "app/admin/exams/page.tsx",
+      "line": 76,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/courses`"
+    },
+    {
+      "file": "app/admin/exams/page.tsx",
+      "line": 113,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/lectures/${selectedLectureId}/students-attempts`"
+    },
+    {
+      "file": "app/admin/exams/page.tsx",
+      "line": 136,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/lectures/${selectedLectureId}/instant-unlock`"
+    },
+    {
+      "file": "app/admin/exams/page.tsx",
+      "line": 168,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/lectures/${selectedLectureId}/reset-attempts`"
+    },
+    {
+      "file": "app/admin/finance/page.tsx",
+      "line": 72,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/finance/summary`"
+    },
+    {
+      "file": "app/admin/finance/page.tsx",
+      "line": 91,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/finance/per-student`"
+    },
+    {
+      "file": "app/admin/finance/page.tsx",
+      "line": 121,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/students/${student.userId}/transactions`"
+    },
+    {
+      "file": "app/admin/forum/page.tsx",
+      "line": 110,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/forum?page=${page}`"
+    },
+    {
+      "file": "app/admin/forum/page.tsx",
+      "line": 157,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/forum/${postId}/reply`"
+    },
+    {
+      "file": "app/admin/forum/page.tsx",
+      "line": 212,
+      "kind": "fetch",
+      "method": "DELETE",
+      "endpoint": "`${API_URL}/api/admin/forum/${confirmModal.id}`"
+    },
+    {
+      "file": "app/admin/homework/page.tsx",
+      "line": 66,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/homework/submissions?page=${pageNumber}`"
+    },
+    {
+      "file": "app/admin/homework/page.tsx",
+      "line": 103,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/homework/submissions/${reviewingSubmission.id}/review`"
+    },
+    {
+      "file": "app/admin/monitoring/page.tsx",
+      "line": 99,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/monitoring/students`"
+    },
+    {
+      "file": "app/admin/monitoring/page.tsx",
+      "line": 123,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/monitoring/extend-grace`"
+    },
+    {
+      "file": "app/admin/monitoring/page.tsx",
+      "line": 150,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/monitoring/attempts/${attemptId}`"
+    },
+    {
+      "file": "app/admin/page.tsx",
+      "line": 85,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/me`"
+    },
+    {
+      "file": "app/admin/page.tsx",
+      "line": 122,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/users/pending`"
+    },
+    {
+      "file": "app/admin/page.tsx",
+      "line": 139,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/wallet/topups?status=pending`"
+    },
+    {
+      "file": "app/admin/page.tsx",
+      "line": 156,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/security/violations`"
+    },
+    {
+      "file": "app/admin/page.tsx",
+      "line": 165,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/limits`"
+    },
+    {
+      "file": "app/admin/page.tsx",
+      "line": 183,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/auth/logout`"
+    },
+    {
+      "file": "app/admin/payment-numbers/page.tsx",
+      "line": 48,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/payment-numbers`"
+    },
+    {
+      "file": "app/admin/payment-numbers/page.tsx",
+      "line": 81,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/payment-numbers`"
+    },
+    {
+      "file": "app/admin/payment-numbers/page.tsx",
+      "line": 121,
+      "kind": "fetch",
+      "method": "DELETE",
+      "endpoint": "`${API_URL}/api/admin/payment-numbers/${id}`"
+    },
+    {
+      "file": "app/admin/payment-numbers/page.tsx",
+      "line": 143,
+      "kind": "fetch",
+      "method": "PATCH",
+      "endpoint": "`${API_URL}/api/admin/payment-numbers/${num.id}`"
+    },
+    {
+      "file": "app/admin/pending-students/page.tsx",
+      "line": 88,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/users/pending`"
+    },
+    {
+      "file": "app/admin/pending-students/page.tsx",
+      "line": 136,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/users/${approveModal.id}/approve`"
+    },
+    {
+      "file": "app/admin/pending-students/page.tsx",
+      "line": 170,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/users/${rejectModal.id}/reject`"
+    },
+    {
+      "file": "app/admin/plan/page.tsx",
+      "line": 41,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/me`"
+    },
+    {
+      "file": "app/admin/plan/page.tsx",
+      "line": 68,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/limits`"
+    },
+    {
+      "file": "app/admin/security/page.tsx",
+      "line": 77,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/security/students-with-violations`"
+    },
+    {
+      "file": "app/admin/security/page.tsx",
+      "line": 100,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/security/violations`"
+    },
+    {
+      "file": "app/admin/security/page.tsx",
+      "line": 144,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/security/block-student/${userId}`"
+    },
+    {
+      "file": "app/admin/security/page.tsx",
+      "line": 181,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/security/unblock-student/${userId}`"
+    },
+    {
+      "file": "app/admin/security/page.tsx",
+      "line": 217,
+      "kind": "fetch",
+      "method": "DELETE",
+      "endpoint": "`${API_URL}/api/admin/security/violations/${violationId}`"
+    },
+    {
+      "file": "app/admin/security/page.tsx",
+      "line": 251,
+      "kind": "fetch",
+      "method": "DELETE",
+      "endpoint": "`${API_URL}/api/admin/security/students/${userId}/violations`"
+    },
+    {
+      "file": "app/admin/settings/page.tsx",
+      "line": 22,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/settings`"
+    },
+    {
+      "file": "app/admin/settings/page.tsx",
+      "line": 41,
+      "kind": "fetch",
+      "method": "PUT",
+      "endpoint": "`${API_URL}/api/admin/settings`"
+    },
+    {
+      "file": "app/admin/stats/courses/page.tsx",
+      "line": 59,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/wallet/course-stats`"
+    },
+    {
+      "file": "app/admin/stats/courses/page.tsx",
+      "line": 85,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/wallet/courses/${courseId}/students`"
+    },
+    {
+      "file": "app/admin/stats/courses/page.tsx",
+      "line": 107,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/student-progress/${studentId}`"
+    },
+    {
+      "file": "app/admin/stats/courses/page.tsx",
+      "line": 127,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/courses`"
+    },
+    {
+      "file": "app/admin/stats/courses/page.tsx",
+      "line": 153,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/users/${selectedStudent.id}/wallet`"
+    },
+    {
+      "file": "app/admin/stats/courses/page.tsx",
+      "line": 186,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/users/${selectedStudent.id}/courses/${courseId}/toggle`"
+    },
+    {
+      "file": "app/admin/stats/finance/page.tsx",
+      "line": 78,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/wallet/summary`"
+    },
+    {
+      "file": "app/admin/stats/finance/page.tsx",
+      "line": 101,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/wallet/transactions?page=${page}&limit=20`"
+    },
+    {
+      "file": "app/admin/stats/finance/page.tsx",
+      "line": 126,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/wallet/subscriptions?page=${page}&limit=20`"
+    },
+    {
+      "file": "app/admin/students/page.tsx",
+      "line": 92,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "url.toString("
+    },
+    {
+      "file": "app/admin/students/page.tsx",
+      "line": 117,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/student-progress/${studentId}`"
+    },
+    {
+      "file": "app/admin/students/page.tsx",
+      "line": 139,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/courses`"
+    },
+    {
+      "file": "app/admin/students/page.tsx",
+      "line": 168,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/users/${selectedStudent.id}/wallet`"
+    },
+    {
+      "file": "app/admin/students/page.tsx",
+      "line": 202,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/users/${selectedStudent.id}/courses/${courseId}/toggle`"
+    },
+    {
+      "file": "app/admin/students/page.tsx",
+      "line": 237,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/users/${selectedStudent.id}/reset-password`"
+    },
+    {
+      "file": "app/admin/topups/page.tsx",
+      "line": 63,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/admin/wallet/topups?status=${filter}&page=${page}`"
+    },
+    {
+      "file": "app/admin/topups/page.tsx",
+      "line": 107,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/wallet/topups/${selectedTopup.id}/approve`"
+    },
+    {
+      "file": "app/admin/topups/page.tsx",
+      "line": 141,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/wallet/topups/${selectedTopup.id}/adjust`"
+    },
+    {
+      "file": "app/admin/topups/page.tsx",
+      "line": 174,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/admin/wallet/topups/${selectedTopup.id}/decline`"
+    },
+    {
+      "file": "app/blocked/page.tsx",
+      "line": 30,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/status`"
+    },
+    {
+      "file": "app/blocked/page.tsx",
+      "line": 56,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/auth/logout`"
+    },
+    {
+      "file": "app/components/BlockedUserCheck.tsx",
+      "line": 26,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/status`"
+    },
+    {
+      "file": "app/components/Navbar.tsx",
+      "line": 36,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/me`"
+    },
+    {
+      "file": "app/components/Navbar.tsx",
+      "line": 51,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/status`"
+    },
+    {
+      "file": "app/components/Navbar.tsx",
+      "line": 83,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/auth/logout`"
+    },
+    {
+      "file": "app/comprehensive-exams/[id]/page.tsx",
+      "line": 68,
+      "kind": "axios-instance",
+      "method": "GET",
+      "endpoint": "`/comprehensive-exams/${examId}`"
+    },
+    {
+      "file": "app/comprehensive-exams/[id]/page.tsx",
+      "line": 111,
+      "kind": "axios-instance",
+      "method": "POST",
+      "endpoint": "`/comprehensive-exams/${exam.id}/purchase`"
+    },
+    {
+      "file": "app/courses/[id]/page.tsx",
+      "line": 78,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/courses/${courseId}`"
+    },
+    {
+      "file": "app/courses/[id]/page.tsx",
+      "line": 98,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/wallet/balance`"
+    },
+    {
+      "file": "app/courses/[id]/page.tsx",
+      "line": 130,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/courses/${courseId}/purchase`"
+    },
+    {
+      "file": "app/courses/page.tsx",
+      "line": 49,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/courses`"
+    },
+    {
+      "file": "app/courses/page.tsx",
+      "line": 75,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/wallet/balance`"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 93,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/notifications/mark-all-read`"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 117,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/me`"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 136,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/courses/my-courses`"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 153,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/notifications`"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 160,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/exams/my-results`"
+    },
+    {
+      "file": "app/dashboard/page.tsx",
+      "line": 175,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/center-codes/redeem`"
+    },
+    {
+      "file": "app/exams/[lectureId]/page.tsx",
+      "line": 84,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/status`"
+    },
+    {
+      "file": "app/exams/[lectureId]/page.tsx",
+      "line": 108,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/exams/attempts/${reviewAttemptId}`"
+    },
+    {
+      "file": "app/exams/[lectureId]/page.tsx",
+      "line": 112,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/lectures/${lectureId}/exam`"
+    },
+    {
+      "file": "app/exams/[lectureId]/page.tsx",
+      "line": 269,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/lectures/${lectureId}/exam/${examData.exam.id}/submit`"
+    },
+    {
+      "file": "app/forum/page.tsx",
+      "line": 67,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/status`"
+    },
+    {
+      "file": "app/forum/page.tsx",
+      "line": 78,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/forum?page=${page}`"
+    },
+    {
+      "file": "app/forum/page.tsx",
+      "line": 155,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/forum`"
+    },
+    {
+      "file": "app/forum/page.tsx",
+      "line": 184,
+      "kind": "fetch",
+      "method": "DELETE",
+      "endpoint": "`${API_URL}/api/forum/${confirmDialog.postId}`"
+    },
+    {
+      "file": "app/lectures/[id]/page.tsx",
+      "line": 69,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/lectures/${lectureId}/progress`"
+    },
+    {
+      "file": "app/lectures/[id]/page.tsx",
+      "line": 95,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/status`"
+    },
+    {
+      "file": "app/lectures/[id]/page.tsx",
+      "line": 149,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/lectures/${lectureId}/progress`"
+    },
+    {
+      "file": "app/lectures/[id]/page.tsx",
+      "line": 167,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/video/playback/${lectureId}`"
+    },
+    {
+      "file": "app/lectures/[id]/page.tsx",
+      "line": 208,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/lectures/${lectureId}`"
+    },
+    {
+      "file": "app/lectures/[id]/page.tsx",
+      "line": 245,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/violations/count`"
+    },
+    {
+      "file": "app/lectures/[id]/page.tsx",
+      "line": 262,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "url"
+    },
+    {
+      "file": "app/lectures/[id]/page.tsx",
+      "line": 289,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/lectures/${lectureId}/homework/status`"
+    },
+    {
+      "file": "app/lectures/[id]/page.tsx",
+      "line": 318,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/lectures/${lectureId}/homework/submit`"
+    },
+    {
+      "file": "app/lectures/[id]/page.tsx",
+      "line": 344,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/lectures/${lectureId}/violation`"
+    },
+    {
+      "file": "app/lectures/[id]/page.tsx",
+      "line": 368,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/lectures/${lectureId}/progress`"
+    },
+    {
+      "file": "app/locked/page.tsx",
+      "line": 26,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/status`"
+    },
+    {
+      "file": "app/locked/page.tsx",
+      "line": 29,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/settings`"
+    },
+    {
+      "file": "app/login/page.tsx",
+      "line": 62,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/auth/login`"
+    },
+    {
+      "file": "app/otp/page.tsx",
+      "line": 104,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/auth/verify-otp`"
+    },
+    {
+      "file": "app/otp/page.tsx",
+      "line": 142,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/auth/resend-otp`"
+    },
+    {
+      "file": "app/page.tsx",
+      "line": 138,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/me`"
+    },
+    {
+      "file": "app/page.tsx",
+      "line": 171,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/courses`"
+    },
+    {
+      "file": "app/page.tsx",
+      "line": 196,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/auth/logout`"
+    },
+    {
+      "file": "app/redeem/page.tsx",
+      "line": 42,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/status`"
+    },
+    {
+      "file": "app/redeem/page.tsx",
+      "line": 69,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/student/center-codes/redeem`"
+    },
+    {
+      "file": "app/register/page.tsx",
+      "line": 192,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/auth/register`"
+    },
+    {
+      "file": "app/resubmit/page.tsx",
+      "line": 53,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/auth/resubmit-documents`"
+    },
+    {
+      "file": "app/resubmit/page.tsx",
+      "line": 81,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/auth/logout`"
+    },
+    {
+      "file": "app/waiting-room/page.tsx",
+      "line": 22,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/auth/logout`"
+    },
+    {
+      "file": "app/waiting-room/page.tsx",
+      "line": 45,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/status`"
+    },
+    {
+      "file": "app/wallet/page.tsx",
+      "line": 120,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/wallet/balance`"
+    },
+    {
+      "file": "app/wallet/page.tsx",
+      "line": 123,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/wallet/transactions?limit=10`"
+    },
+    {
+      "file": "app/wallet/page.tsx",
+      "line": 132,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/auth/status`"
+    },
+    {
+      "file": "app/wallet/page.tsx",
+      "line": 173,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}/api/wallet/topup/history?limit=10`"
+    },
+    {
+      "file": "app/wallet/page.tsx",
+      "line": 204,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/wallet/topup/initiate?provider=${method}`"
+    },
+    {
+      "file": "app/wallet/page.tsx",
+      "line": 257,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/wallet/topup/submit`"
+    },
+    {
+      "file": "components/SecureVideoPlayer.tsx",
+      "line": 272,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/lectures/${lectureId}/progress`"
+    },
+    {
+      "file": "components/SecureVideoPlayer.tsx",
+      "line": 326,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/lectures/${lectureId}/progress`"
+    },
+    {
+      "file": "components/SecureVideoPlayer.tsx",
+      "line": 363,
+      "kind": "fetch",
+      "method": "POST",
+      "endpoint": "`${API_URL}/api/lectures/${lectureId}/progress`"
+    },
+    {
+      "file": "e2e/security.spec.ts",
+      "line": 25,
+      "kind": "fetch",
+      "method": "GET",
+      "endpoint": "`${API_URL}${ep.url}`"
+    },
+    {
+      "file": "services/auth.service.ts",
+      "line": 32,
+      "kind": "axios-instance",
+      "method": "POST",
+      "endpoint": "'/auth/logout'"
+    }
+  ]
+}

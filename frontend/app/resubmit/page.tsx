@@ -4,15 +4,16 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import { XIcon, FileTextIcon, ImageIcon, AlertTriangleIcon } from "../components/Icons";
-import api from "@/lib/axios"; // 🚀 عميل الشبكة المركزي
-import { useAuthStore } from "@/store/useAuthStore"; // 🚀 العقل المدبر
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+const getToken = () => {
+  return document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] || localStorage.getItem('token');
+};
 
 export default function ResubmitPage() {
   const router = useRouter();
-  
-  // 🚀 جلب البيانات ودالة تسجيل الخروج وتحديث الحالة من Zustand
-  const { user, isAuthenticated, isLoading, logout, fetchUser } = useAuthStore();
-  
+  const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [reason, setReason] = useState<string>('');
   const [image, setImage] = useState<File | null>(null);
@@ -24,21 +25,17 @@ export default function ResubmitPage() {
     setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 4000);
   };
 
-  // 🚀 حارس البوابة الذكي: التحقق من حالة الطالب
   useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated) {
-        router.replace("/login");
-      } else if (user?.status !== 'rejected') {
-        // إذا كان حسابه معلقاً (pending) أو مفعلاً (active)، يتم طرده من هذه الصفحة
-        router.replace("/dashboard");
-      } else {
-        // جلب سبب الرفض من بيانات المستخدم (إن وُجدت) أو من التخزين المحلي كاحتياطي
-        const storedReason = user?.rejectionReason || localStorage.getItem('rejection_reason');
-        if (storedReason) setReason(storedReason);
-      }
+    const token = getToken();
+    if (!token) {
+      router.push("/login");
+      return;
     }
-  }, [isLoading, isAuthenticated, user, router]);
+    const storedReason = localStorage.getItem('rejection_reason');
+    if (storedReason) setReason(storedReason);
+
+    setLoading(false);
+  }, [router]);
 
   const handleResubmit = async () => {
     if (!image) {
@@ -47,56 +44,61 @@ export default function ResubmitPage() {
     }
 
     setProcessing(true);
+    const token = getToken();
 
     try {
       const formData = new FormData();
       formData.append('id_image', image);
 
-      // 🚀 إرسال الطلب عبر Axios (يتكفل بالتوكن والـ Headers تلقائياً)
-      await api.post('/auth/resubmit-documents', formData);
+      const response = await fetch(`${API_URL}/api/auth/resubmit-documents`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
 
-      // تنظيف السبب من التخزين المحلي بعد النجاح
-      localStorage.removeItem('rejection_reason');
-      
-      // 🚀 تحديث حالة المستخدم في الذاكرة لتتحول من rejected إلى pending
-      await fetchUser(); 
-
-      showToast("تم إرسال الصورة بنجاح! جاري تحويلك...", "success");
-      
-      setTimeout(() => {
-          router.replace("/waiting-room");
-      }, 1500);
-
-    } catch (e: any) {
-      // اصطياد الأخطاء من الباك إند بذكاء
+      if (response.ok) {
+        localStorage.removeItem('rejection_reason');
+        showToast("تم إرسال الصورة بنجاح! جاري تحويلك...", "success");
+        setTimeout(() => {
+            router.push("/waiting-room");
+        }, 1500);
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.message || "حدث خطأ أثناء رفع الصورة", "error");
+        setProcessing(false);
+      }
+    } catch (e) {
       console.error("Resubmit failed", e);
-      showToast(e?.message || e?.error || "حدث خطأ أثناء رفع الصورة", "error");
-    } finally {
+      showToast("خطأ في الاتصال بالخادم", "error");
       setProcessing(false);
     }
   };
 
   const handleLogout = async () => {
+    const token = getToken();
+    if (token) {
+      try {
+        await fetch(`${API_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (e) {}
+    }
+    localStorage.removeItem("token");
     localStorage.removeItem("rejection_reason");
-    await logout(); // 🚀 استخدام الدالة المركزية لضمان تنظيف كل شيء
+    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     router.push("/login");
   };
 
-  // عرض شاشة التحميل أثناء فحص الحالة
-  if (isLoading) {
+  if (loading) {
     return (
       <>
         <Navbar />
-        <div className="loading-state" style={{ minHeight: "100vh", backgroundColor: "var(--background)" }}>
+        <div className="loading-state" style={{ minHeight: "100vh" }}>
           <div className="spinner spinner-lg"></div>
         </div>
       </>
     );
-  }
-
-  // إذا لم يكن مرفوضاً (rejected)، لا تعرض الـ UI وتجنب وميض الشاشة
-  if (user?.status !== 'rejected') {
-    return null;
   }
 
   return (
@@ -141,9 +143,9 @@ export default function ResubmitPage() {
           </h1>
 
           {reason && (
-            <div className="banner banner-error" style={{ marginBottom: '1rem', textAlign: 'right' }}>
+            <div className="banner banner-error" style={{ marginBottom: '1rem' }}>
               <AlertTriangleIcon size={16} />
-              <strong>سبب الرفض:</strong> {reason}
+              السبب: {reason}
             </div>
           )}
 
@@ -151,28 +153,25 @@ export default function ResubmitPage() {
             لقد تمت مراجعة طلب التسجيل الخاص بك. يرجى إرفاق صورة هوية جديدة وواضحة ليتمكن فريق الدعم من تفعيل حسابك.
           </p>
 
-          <div className={`file-upload-zone ${image ? 'has-file' : ''}`} style={{ marginBottom: '1.5rem' }}>
-            {/* 🚀 إضافة الـ label لجعل المنطقة بالكامل قابلة للنقر */}
-            <label style={{ display: 'block', width: '100%', cursor: 'pointer' }}>
-              <input
-                type="file"
-                accept="image/jpeg, image/png, image/jpg"
-                style={{ display: 'none' }}
-                onChange={(e) => setImage(e.target.files?.[0] || null)}
-              />
-              {image ? (
-                <div style={{ color: 'var(--primary)', fontWeight: 'bold' }}>
-                  <FileTextIcon size={32} style={{ display: 'block', margin: '0 auto 0.5rem' }} />
-                  {image.name}
-                </div>
-              ) : (
-                <div>
-                  <ImageIcon size={40} style={{ display: 'block', margin: '0 auto 0.5rem', color: 'var(--text-muted)' }} />
-                  <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>اضغط لاختيار صورة الهوية الجديدة</p>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>JPG, PNG (الحد الأقصى 5MB)</p>
-                </div>
-              )}
-            </label>
+          <div className="file-upload-zone" style={{ marginBottom: '1.5rem' }}>
+            <input
+              type="file"
+              accept="image/jpeg, image/png, image/jpg"
+              style={{ display: 'none' }}
+              onChange={(e) => setImage(e.target.files?.[0] || null)}
+            />
+            {image ? (
+              <div style={{ color: 'var(--primary)', fontWeight: 'bold' }}>
+                <FileTextIcon size={32} style={{ display: 'block', margin: '0 auto 0.5rem' }} />
+                {image.name}
+              </div>
+            ) : (
+              <div>
+                <ImageIcon size={40} style={{ display: 'block', margin: '0 auto 0.5rem', color: 'var(--text-muted)' }} />
+                <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>اضغط لاختيار صورة الهوية الجديدة</p>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>JPG, PNG (الحد الأقصى 5MB)</p>
+              </div>
+            )}
           </div>
 
           <button

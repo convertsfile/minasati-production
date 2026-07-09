@@ -1,0 +1,6 @@
+# github.com/a_ashraf_tech/vod-engine
+# [github.com/a_ashraf_tech/vod-engine]
+vet.exe: .\upload.go:15:6: main redeclared in this block
+# github.com/a_ashraf_tech/vod-engine
+.\upload.go:15:6: main redeclared in this block
+	.\trigger.go:12:6: other declaration of main

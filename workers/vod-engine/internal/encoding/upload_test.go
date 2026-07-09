@@ -2,6 +2,8 @@ package encoding
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,6 +17,32 @@ import (
 	"github.com/a_ashraf_tech/vod-engine/internal/config"
 	"github.com/a_ashraf_tech/vod-engine/internal/queue"
 )
+
+// writeTestKeyInfo creates a 16-byte random AES key in key.bin and a matching
+// enc.keyinfo file inside workDir. It returns the absolute keyinfo path. The
+// keyinfo references key.bin by absolute path so ffmpeg finds it regardless of
+// the current working directory used to launch the encoding process.
+func writeTestKeyInfo(tb testing.TB, workDir string) string {
+	tb.Helper()
+	keyPath := filepath.Join(workDir, "key.bin")
+	keyBytes := make([]byte, 16)
+	if _, err := rand.Read(keyBytes); err != nil {
+		tb.Fatalf("generate key.bin: %v", err)
+	}
+	if err := os.WriteFile(keyPath, keyBytes, 0600); err != nil {
+		tb.Fatalf("write key.bin: %v", err)
+	}
+	iv := make([]byte, 16)
+	if _, err := rand.Read(iv); err != nil {
+		tb.Fatalf("generate iv: %v", err)
+	}
+	keyInfoPath := filepath.Join(workDir, "enc.keyinfo")
+	content := fmt.Sprintf("http://example.com/key\n%s\n%s", keyPath, hex.EncodeToString(iv))
+	if err := os.WriteFile(keyInfoPath, []byte(content), 0600); err != nil {
+		tb.Fatalf("write keyinfo: %v", err)
+	}
+	return keyInfoPath
+}
 
 // generateTestVideo creates a small synthetic MP4 using FFmpeg's testsrc filter.
 // The video is tiny (short duration, low resolution) to keep tests fast.
@@ -117,6 +145,13 @@ func TestUploadFlow_EncodingThenFileList(t *testing.T) {
 		FFmpegPreset:          "ultrafast",
 		HLSSegmentDurationS:   2,
 		HLSKeyframeInterval:   48,
+		// Disable watchdog stalls for tests (HLS+AES on Windows is slow).
+		WatchdogStallThreshold:       9999,
+		WatchdogProgressTimeoutS:     9999,
+		WatchdogShortVideoThresholdS: 1,
+		WatchdogShortVideoTimeoutS:   9999,
+		WatchdogSegmentStallTimeoutS: 9999,
+		WatchdogCPUIdleTimeoutS:      9999,
 	}
 	p := NewPipeline(cfg, &b2.Client{})
 
@@ -124,11 +159,8 @@ func TestUploadFlow_EncodingThenFileList(t *testing.T) {
 	inputFile := filepath.Join(workDir, "input.mp4")
 	generateTestVideo(t, inputFile, 854, 480, 3.0)
 
-	// Create key info file (needed for HLS encryption)
-	keyInfoPath := filepath.Join(workDir, "enc.keyinfo")
-	if err := os.WriteFile(keyInfoPath, []byte("http://example.com/key\nkey.bin\n0123456789abcdef"), 0600); err != nil {
-		t.Fatalf("write keyinfo: %v", err)
-	}
+	// Create key info file and key.bin fixture (needed for HLS encryption)
+	keyInfoPath := writeTestKeyInfo(t, workDir)
 
 	subJob := &queue.SubJob{
 		ID:        "upload-test-job-1",
@@ -237,16 +269,20 @@ func TestUploadFlow_ThreeVideos(t *testing.T) {
 				FFmpegPreset:          "ultrafast",
 				HLSSegmentDurationS:   2,
 				HLSKeyframeInterval:   48,
+				// Disable watchdog stalls for tests (HLS+AES on Windows is slow).
+				WatchdogStallThreshold:       9999,
+				WatchdogProgressTimeoutS:     9999,
+				WatchdogShortVideoThresholdS: 1,
+				WatchdogShortVideoTimeoutS:   9999,
+				WatchdogSegmentStallTimeoutS: 9999,
+				WatchdogCPUIdleTimeoutS:      9999,
 			}
 			p := NewPipeline(cfg, &b2.Client{})
 
 			inputFile := filepath.Join(workDir, "input.mp4")
 			generateTestVideo(t, inputFile, tt.width, tt.height, tt.duration)
 
-			keyInfoPath := filepath.Join(workDir, "enc.keyinfo")
-			if err := os.WriteFile(keyInfoPath, []byte("http://example.com/key\nkey.bin\n0123456789abcdef"), 0600); err != nil {
-				t.Fatalf("write keyinfo: %v", err)
-			}
+			keyInfoPath := writeTestKeyInfo(t, workDir)
 
 			subJob := &queue.SubJob{
 				ID:        fmt.Sprintf("upload-3vid-%s", tt.quality),
@@ -311,6 +347,15 @@ func TestUploadFlow_FullPipeline_WithRecordingClient(t *testing.T) {
 		HLSSegmentDurationS:   2,
 		HLSKeyframeInterval:   48,
 		UploadConcurrency:     1,
+		// Disable watchdog stalls for the test: this test validates pipeline
+		// orchestration, not watchdog behaviour, and HLS+AES encoding of small
+		// test videos on Windows can take longer than the production stall threshold.
+		WatchdogStallThreshold:       9999,
+		WatchdogProgressTimeoutS:     9999,
+		WatchdogShortVideoThresholdS: 1,
+		WatchdogShortVideoTimeoutS:   9999,
+		WatchdogSegmentStallTimeoutS: 9999,
+		WatchdogCPUIdleTimeoutS:      9999,
 		// Download disabled — we'll place the input file directly
 	}
 
@@ -326,7 +371,14 @@ func TestUploadFlow_FullPipeline_WithRecordingClient(t *testing.T) {
 	// For now: create the input, run the pipeline, expect upload to fail gracefully
 	// due to missing B2 credentials, and verify the encoding phase worked.
 
-	inputFile := filepath.Join(workDir, "input.mp4")
+	// The pipeline uses filepath.Join(VODWorkDir, subJob.JobGroup) as its work dir,
+	// so we pre-stage the input at the path it will look for.
+	jobGroup := "group-full-test"
+	pipelineWorkDir := filepath.Join(workDir, jobGroup)
+	if err := os.MkdirAll(pipelineWorkDir, 0755); err != nil {
+		t.Fatalf("create pipeline work dir: %v", err)
+	}
+	inputFile := filepath.Join(pipelineWorkDir, "input.mp4")
 	generateTestVideo(t, inputFile, 640, 360, 1.5)
 
 	// Pre-create the input so pipeline skips download
@@ -337,7 +389,7 @@ func TestUploadFlow_FullPipeline_WithRecordingClient(t *testing.T) {
 		ID:           "full-pipeline-test",
 		LectureID:    "full-test",
 		Quality:      "360p",
-		JobGroup:     "group-full-test",
+		JobGroup:     jobGroup,
 		RetryCount:   0,
 	}
 
@@ -349,12 +401,12 @@ func TestUploadFlow_FullPipeline_WithRecordingClient(t *testing.T) {
 		t.Logf("Pipeline Run() returned expected error (no B2): %v", err)
 
 		// But we should have encoding artifacts on disk
-		pattern := filepath.Join(workDir, "*.ts")
+		pattern := filepath.Join(pipelineWorkDir, "**", "*.ts")
 		matches, _ := filepath.Glob(pattern)
 		t.Logf("HLS segments on disk despite upload failure: %d", len(matches))
 
 		// Also check for m3u8
-		m3u8Pattern := filepath.Join(workDir, "*.m3u8")
+		m3u8Pattern := filepath.Join(pipelineWorkDir, "**", "*.m3u8")
 		m3u8Matches, _ := filepath.Glob(m3u8Pattern)
 		t.Logf("Playlist files on disk: %d", len(m3u8Matches))
 	} else {
@@ -517,6 +569,13 @@ func BenchmarkUploadFlow_EncodingSpeed(b *testing.B) {
 			FFmpegPreset:          "ultrafast",
 			HLSSegmentDurationS:   1,
 			HLSKeyframeInterval:   48,
+			// Disable watchdog stalls for benchmark (HLS+AES on Windows is slow).
+			WatchdogStallThreshold:       9999,
+			WatchdogProgressTimeoutS:     9999,
+			WatchdogShortVideoThresholdS: 1,
+			WatchdogShortVideoTimeoutS:   9999,
+			WatchdogSegmentStallTimeoutS: 9999,
+			WatchdogCPUIdleTimeoutS:      9999,
 		}
 		p := NewPipeline(cfg, &b2.Client{})
 
@@ -538,8 +597,7 @@ func BenchmarkUploadFlow_EncodingSpeed(b *testing.B) {
 			b.Fatalf("ffmpeg failed: %v\nOutput: %s", err, string(out))
 		}
 
-		keyInfoPath := filepath.Join(workDir, "enc.keyinfo")
-		os.WriteFile(keyInfoPath, []byte("http://example.com/key\nkey.bin\n0123456789abcdef"), 0600)
+		keyInfoPath := writeTestKeyInfo(b, workDir)
 
 		subJob := &queue.SubJob{
 			ID:        fmt.Sprintf("bench-%d", i),

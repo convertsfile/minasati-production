@@ -2,6 +2,7 @@ package b2
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -12,8 +13,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 
+// ErrClientNotInitialized is returned when a B2 Client method is called
+// without a fully configured S3 client (common in unit tests that exercise
+// pipeline paths with a zero-value Client).
+var ErrClientNotInitialized = errors.New("b2 client not initialized (S3Client is nil)")
+
 // DownloadFile يقوم بتنزيل ملف من مساحة التخزين إلى القرص المحلي بكفاءة عالية (متعدد الخيوط)
 func (c *Client) DownloadFile(ctx context.Context, b2Key string, destPath string) error {
+	if c == nil || c.S3Client == nil {
+		return ErrClientNotInitialized
+	}
+
 	// إنشاء الملف المحلي المعزول
 	file, err := os.Create(destPath)
 	if err != nil {
@@ -44,6 +54,10 @@ func (c *Client) DownloadFile(ctx context.Context, b2Key string, destPath string
 // The caller is responsible for closing the returned body. This is used for
 // rate-limited downloads via pv --rate-limit.
 func (c *Client) GetObjectStream(ctx context.Context, b2Key string) (io.ReadCloser, error) {
+	if c == nil || c.S3Client == nil {
+		return nil, ErrClientNotInitialized
+	}
+
 	slog.Info("Streaming object from B2", "key", b2Key)
 
 	output, err := c.S3Client.GetObject(ctx, &s3.GetObjectInput{

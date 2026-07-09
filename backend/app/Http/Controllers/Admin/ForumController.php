@@ -25,16 +25,19 @@ class ForumController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate($request->integer('limit', 20));
 
-        // 🚀 تحويل المفاتيح لروابط سحابية صالحة للعمل
+        // SEC-MAJOR-02: convert storage keys to short-lived signed URLs.
+        // The admin viewing this page is already authenticated and
+        // authorized as an admin, so we sign for a longer window (10 min)
+        // to keep the page interactive.
         $posts->getCollection()->transform(fn($post) => [
             'id' => $post->id,
             'studentName' => $post->user->full_name,
             'studentNumber' => $post->user->student_number,
             'body' => $post->body,
-            'imageUrl' => $post->image ? $this->b2Service->getUrl($post->image) : null,
+            'imageUrl' => $post->image ? $this->b2Service->getSignedUrl($post->image, 600) : null,
             'adminReply' => $post->admin_reply,
-            'adminReplyAudioUrl' => $post->admin_reply_audio ? $this->b2Service->getUrl($post->admin_reply_audio) : null,
-            'adminReplyImageUrl' => $post->admin_reply_image ? $this->b2Service->getUrl($post->admin_reply_image) : null,
+            'adminReplyAudioUrl' => $post->admin_reply_audio ? $this->b2Service->getSignedUrl($post->admin_reply_audio, 600) : null,
+            'adminReplyImageUrl' => $post->admin_reply_image ? $this->b2Service->getSignedUrl($post->admin_reply_image, 600) : null,
             'repliedAt' => $post->replied_at ? $post->replied_at->format('Y-m-d H:i:s') : null,
             'createdAt' => $post->created_at->format('Y-m-d H:i:s'),
         ]);
@@ -79,8 +82,8 @@ class ForumController extends Controller
         return ApiResponse::success([
             'id' => $post->id,
             'adminReply' => $post->admin_reply,
-            'adminReplyAudioUrl' => $post->admin_reply_audio ? $this->b2Service->getUrl($post->admin_reply_audio) : null,
-            'adminReplyImageUrl' => $post->admin_reply_image ? $this->b2Service->getUrl($post->admin_reply_image) : null,
+            'adminReplyAudioUrl' => $post->admin_reply_audio ? $this->b2Service->getSignedUrl($post->admin_reply_audio, 600) : null,
+            'adminReplyImageUrl' => $post->admin_reply_image ? $this->b2Service->getSignedUrl($post->admin_reply_image, 600) : null,
             'repliedAt' => $post->replied_at->format('Y-m-d H:i:s'),
         ], 'تم إرسال الرد بنجاح');
     }
@@ -125,8 +128,8 @@ class ForumController extends Controller
         return ApiResponse::success([
             'id' => $post->id,
             'adminReply' => $post->admin_reply,
-            'adminReplyAudioUrl' => $post->admin_reply_audio ? $this->b2Service->getUrl($post->admin_reply_audio) : null,
-            'adminReplyImageUrl' => $post->admin_reply_image ? $this->b2Service->getUrl($post->admin_reply_image) : null,
+            'adminReplyAudioUrl' => $post->admin_reply_audio ? $this->b2Service->getSignedUrl($post->admin_reply_audio, 600) : null,
+            'adminReplyImageUrl' => $post->admin_reply_image ? $this->b2Service->getSignedUrl($post->admin_reply_image, 600) : null,
             'repliedAt' => $post->replied_at->format('Y-m-d H:i:s'),
         ], 'تم تحديث الرد بنجاح');
     }

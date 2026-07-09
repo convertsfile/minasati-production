@@ -4,30 +4,65 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTheme } from './ThemeProvider';
-import { useAuthStore } from '@/store/useAuthStore'; // 🚀 استدعاء العقل المدبر
-import { 
-  HomeIcon, MenuIcon, SunIcon, MoonIcon, 
-  UserIcon, LogoutIcon, DashboardIcon, XIcon, MessageIcon 
-} from './Icons';
+import { HomeIcon, MenuIcon, SunIcon, MoonIcon, UserIcon, LogoutIcon, DashboardIcon, XIcon, MessageIcon } from './Icons';
 
 interface NavbarProps {
   transparent?: boolean;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
 export default function Navbar({ transparent = false }: NavbarProps) {
   const router = useRouter();
   const { theme, toggleTheme, mounted: themeMounted } = useTheme();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [userName, setUserName] = useState('');
+  const [hasCourses, setHasCourses] = useState(false);
 
-  // 🚀 السحر هنا: جلب البيانات وحالة التحميل من الذاكرة المركزية بسطر واحد فقط!
-  const { user, isAuthenticated, isLoading, logout } = useAuthStore();
+  useEffect(() => {
+    const token = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('token='))
+      ?.split('=')[1];
 
-  // تحديد الصلاحيات بناءً على البيانات المخزنة
-  const isAdmin = user?.role === 'admin';
-  // ملاحظة: تأكد أن الباك إند يقوم بإرسال hasCourses أو يمكننا الاعتماد على دور الطالب فقط
-  const hasCourses = user?.hasCourses ?? false;
+    const localToken = localStorage.getItem('token');
+    const authToken = token || localToken;
 
-  // إغلاق التمرير (Scroll) عند فتح قائمة الموبايل
+    if (authToken) {
+      setIsLoggedIn(true);
+      fetch(`${API_URL}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data) {
+            const user = data.data || data;
+            setIsAdmin(user.is_admin || false);
+            setUserName(user.full_name || '');
+          }
+        })
+        .catch(() => {})
+        .finally(() => setAuthReady(true));
+
+      // جلب حالة الاشتراك في الكورسات
+      fetch(`${API_URL}/api/auth/status`, {
+        headers: { Authorization: `Bearer ${authToken}`, Accept: 'application/json' },
+      })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data?.data) {
+            setHasCourses(!!data.data.hasCourses);
+          }
+        })
+        .catch(() => {});
+    } else {
+      setAuthReady(true);
+    }
+  }, []);
+
   useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = 'hidden';
@@ -37,14 +72,34 @@ export default function Navbar({ transparent = false }: NavbarProps) {
     return () => { document.body.style.overflow = ''; };
   }, [mobileMenuOpen]);
 
-  // تسجيل الخروج المركزي
   const handleLogout = async () => {
-    await logout(); // 🚀 الـ Store يتكفل بالاتصال بالباك إند ومسح الكوكيز
-    setMobileMenuOpen(false);
+    const token = document.cookie
+      .split('; ')
+      .find(row => row.startsWith('token='))
+      ?.split('=')[1] || localStorage.getItem('token');
+
+    if (token) {
+      try {
+        await fetch(`${API_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          },
+        });
+      } catch (error) {
+        console.error('Logout request failed:', error);
+      }
+    }
+
+    localStorage.removeItem('token');
+    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    setIsLoggedIn(false);
+    setIsAdmin(false);
+    setUserName('');
     router.push('/login');
   };
 
-  // مكون التحميل الوهمي (Skeleton) أثناء جلب البيانات في الخلفية
   const AuthPlaceholder = () => (
     <div className="navbar-actions-placeholder" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
       <div className="skeleton" style={{ width: '80px', height: '36px', borderRadius: 'var(--radius-md)', opacity: 0.3 }} />
@@ -52,19 +107,10 @@ export default function Navbar({ transparent = false }: NavbarProps) {
     </div>
   );
 
-  // أزرار التحكم بناءً على الصلاحيات
   const AuthButtons = () => (
     <>
-      {isAuthenticated ? (
+      {isLoggedIn ? (
         <>
-          {/* 🚀 إظهار الرصيد المالي في الـ Navbar مباشرة من الذاكرة */}
-          {!isAdmin && user && (
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-[var(--soft-bg)] border border-[var(--border-light)] rounded-full text-sm font-semibold text-[var(--primary)] mx-2">
-              <span>الرصيد:</span>
-              <span>{user.walletBalance}</span>
-            </div>
-          )}
-
           {isAdmin ? (
             <Link href="/admin" className="btn btn-outline btn-sm">
               <DashboardIcon size={16} />
@@ -73,7 +119,6 @@ export default function Navbar({ transparent = false }: NavbarProps) {
           ) : (
             <Link href="/dashboard" className="btn btn-outline btn-sm">
               <UserIcon size={16} />
-              <span>حسابي</span>
             </Link>
           )}
           <button onClick={handleLogout} className="btn btn-primary btn-sm" style={{ background: 'var(--error)' }}>
@@ -105,20 +150,16 @@ export default function Navbar({ transparent = false }: NavbarProps) {
         <ul className="navbar-links">
           <li><Link href="/" className="navbar-link">الرئيسية</Link></li>
           <li><Link href="/courses" className="navbar-link">الكورسات</Link></li>
-          {!isLoading && isAuthenticated && user?.status === 'active' && !isAdmin && hasCourses && (
-              <Link href="/forum" className="navbar-link" onClick={() => setMobileMenuOpen(false)}>المنتدى</Link>
+          {authReady && isLoggedIn && !isAdmin && hasCourses && (
+            <li><Link href="/forum" className="navbar-link">المنتدى</Link></li>
           )}
-          {!isLoading && isAuthenticated && user?.status === 'active' && !isAdmin && (
-            <Link href="/wallet" className="navbar-link" onClick={() => setMobileMenuOpen(false)}>المحفظة</Link>
-          )}
-          {!isLoading && isAuthenticated && isAdmin && (
-            <Link href="/admin" className="navbar-link" onClick={() => setMobileMenuOpen(false)}>لوحة التحكم</Link>
+          {authReady && isLoggedIn && !isAdmin && (
+            <li><Link href="/wallet" className="navbar-link">المحفظة</Link></li>
           )}
         </ul>
 
         <div className="navbar-actions">
-          {/* 🚀 تبديل سلس بين الهيكل الوهمي والأزرار الحقيقية */}
-          {isLoading ? <AuthPlaceholder /> : <AuthButtons />}
+          {authReady ? <AuthButtons /> : <AuthPlaceholder />}
           <button className="theme-toggle" onClick={toggleTheme} aria-label="تبديل الوضع" suppressHydrationWarning>
             {themeMounted ? (theme === 'light' ? <MoonIcon size={18} /> : <SunIcon size={18} />) : <SunIcon size={18} />}
           </button>
@@ -133,7 +174,6 @@ export default function Navbar({ transparent = false }: NavbarProps) {
         </button>
       </div>
 
-      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="mobile-nav active">
           <div className="mobile-nav-header">
@@ -145,21 +185,13 @@ export default function Navbar({ transparent = false }: NavbarProps) {
               <XIcon size={20} />
             </button>
           </div>
-          
           <div className="mobile-nav-links">
             <Link href="/" className="navbar-link" onClick={() => setMobileMenuOpen(false)}>الرئيسية</Link>
             <Link href="/courses" className="navbar-link" onClick={() => setMobileMenuOpen(false)}>الكورسات</Link>
-            {!isLoading && isAuthenticated && !isAdmin && hasCourses && (
-              <Link href="/forum" className="navbar-link" onClick={() => setMobileMenuOpen(false)}>المنتدى</Link>
-            )}
-            {!isLoading && isAuthenticated && !isAdmin && (
-              <Link href="/wallet" className="navbar-link" onClick={() => setMobileMenuOpen(false)}>المحفظة</Link>
-            )}
-            {!isLoading && isAuthenticated && isAdmin && (
-              <Link href="/admin" className="navbar-link" onClick={() => setMobileMenuOpen(false)}>لوحة التحكم</Link>
-            )}
+            {authReady && isLoggedIn && !isAdmin && hasCourses && <Link href="/forum" className="navbar-link" onClick={() => setMobileMenuOpen(false)}>المنتدى</Link>}
+            {authReady && isLoggedIn && !isAdmin && <Link href="/wallet" className="navbar-link" onClick={() => setMobileMenuOpen(false)}>المحفظة</Link>}
+            {authReady && isLoggedIn && isAdmin && <Link href="/admin" className="navbar-link" onClick={() => setMobileMenuOpen(false)}>لوحة التحكم</Link>}
           </div>
-
           <button
             className="mobile-theme-toggle"
             onClick={toggleTheme}
@@ -169,34 +201,33 @@ export default function Navbar({ transparent = false }: NavbarProps) {
             {themeMounted ? (theme === 'light' ? <MoonIcon size={18} /> : <SunIcon size={18} />) : <SunIcon size={18} />}
             <span>{theme === 'light' ? 'الوضع الداكن' : 'الوضع الفاتح'}</span>
           </button>
-          
-          <div className="mobile-nav-actions mt-4">
-            {!isLoading && (
-              isAuthenticated ? (
+          <div className="mobile-nav-actions">
+            {authReady ? (
+              isLoggedIn ? (
                 <>
                   {isAdmin ? (
-                    <Link href="/admin" className="btn btn-outline w-full justify-center mb-2" onClick={() => setMobileMenuOpen(false)}>
+                    <Link href="/admin" className="btn btn-outline" onClick={() => setMobileMenuOpen(false)}>
                       <DashboardIcon size={18} />
                       <span>لوحة التحكم</span>
                     </Link>
                   ) : (
-                    <Link href="/dashboard" className="btn btn-outline w-full justify-center mb-2" onClick={() => setMobileMenuOpen(false)}>
+                    <Link href="/dashboard" className="btn btn-outline" onClick={() => setMobileMenuOpen(false)}>
                       <UserIcon size={18} />
-                      <span>حسابي</span>
+                      <span>لوحة التحكم</span>
                     </Link>
                   )}
-                  <button onClick={handleLogout} className="btn btn-danger w-full justify-center">
+                  <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="btn btn-danger">
                     <LogoutIcon size={18} />
                     <span>خروج</span>
                   </button>
                 </>
               ) : (
-                <div className="flex flex-col gap-2 w-full">
-                  <Link href="/login" className="btn btn-outline w-full justify-center" onClick={() => setMobileMenuOpen(false)}>دخول</Link>
-                  <Link href="/register" className="btn btn-primary w-full justify-center" onClick={() => setMobileMenuOpen(false)}>سجل الآن</Link>
-                </div>
+                <>
+                  <Link href="/login" className="btn btn-outline" onClick={() => setMobileMenuOpen(false)}>دخول</Link>
+                  <Link href="/register" className="btn btn-primary" onClick={() => setMobileMenuOpen(false)}>سجل الآن</Link>
+                </>
               )
-            )}
+            ) : null}
           </div>
         </div>
       )}

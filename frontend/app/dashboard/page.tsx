@@ -65,7 +65,7 @@ const getToken = () => {
 
 export default function StudentDashboard() {
   const router = useRouter();
-  const { isChecking } = useAuthGuard(['student']);
+  const { isChecking } = useAuthGuard();
 
   const [activeSection, setActiveSection] = useState<Section>('profile');
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -90,7 +90,7 @@ export default function StudentDashboard() {
         try {
           const token = getToken();
           if (!token) return;
-          const res = await fetch(`${API_URL}/notifications/mark-all-read`, {
+          const res = await fetch(`${API_URL}/api/notifications/mark-all-read`, {
             method: 'POST',
             headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
           });
@@ -114,7 +114,7 @@ export default function StudentDashboard() {
       const token = getToken();
       if (!token) return;
 
-      const userRes = await fetch(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+      const userRes = await fetch(`${API_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
       if (userRes.ok) {
         const userDataJson = await userRes.json();
         const data = userDataJson.data || userDataJson;
@@ -133,7 +133,7 @@ export default function StudentDashboard() {
         });
       }
 
-      const progressRes = await fetch(`${API_URL}/courses/my-courses`, { headers: { Authorization: `Bearer ${token}` } });
+      const progressRes = await fetch(`${API_URL}/api/courses/my-courses`, { headers: { Authorization: `Bearer ${token}` } });
       if (progressRes.ok) {
         const progData = await progressRes.json();
         const coursesArray = progData.data?.courses || progData.data || [];
@@ -150,14 +150,14 @@ export default function StudentDashboard() {
         }));
       }
 
-      const notifRes = await fetch(`${API_URL}/notifications`, { headers: { Authorization: `Bearer ${token}` } });
+      const notifRes = await fetch(`${API_URL}/api/notifications`, { headers: { Authorization: `Bearer ${token}` } });
       if (notifRes.ok) {
         const notifData = await notifRes.json();
         setNotifications(notifData.data?.notifications || notifData.data || []);
         setUnreadCount(notifData.data?.unreadCount || 0);
       }
 
-      const examsRes = await fetch(`${API_URL}/exams/my-results`, { headers: { Authorization: `Bearer ${token}` } });
+      const examsRes = await fetch(`${API_URL}/api/exams/my-results`, { headers: { Authorization: `Bearer ${token}` } });
       if (examsRes.ok) {
         const examsData = await examsRes.json();
         setExamAttempts(examsData.data || []);
@@ -172,7 +172,7 @@ export default function StudentDashboard() {
     setProcessing(true);
     try {
       const token = getToken();
-      const res = await fetch(`${API_URL}/center-codes/redeem`, {
+      const res = await fetch(`${API_URL}/api/center-codes/redeem`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ code: redeemCode }),

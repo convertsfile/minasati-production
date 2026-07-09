@@ -1,82 +1,94 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from '../components/Navbar';
-import { ClockIcon, LogoutIcon, AlertCircleIcon } from '../components/Icons';
-import { useAuthStore } from "@/store/useAuthStore"; // 🚀 العقل المدبر للحالة
+import { ClockIcon, LogoutIcon, CheckIcon, AlertCircleIcon } from '../components/Icons';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+const getToken = () => {
+  return document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] || localStorage.getItem('token');
+};
 
 export default function WaitingRoomPage() {
   const router = useRouter();
-  
-  // 🚀 جلب البيانات والدوال المركزية من Zustand
-  const { user, isAuthenticated, isLoading, logout, fetchUser } = useAuthStore();
+  const [loading, setLoading] = useState(true);
 
-  // 1. حارس البوابة الذكي (Smart Routing Guard)
-  useEffect(() => {
-    if (!isLoading) {
-      if (!isAuthenticated) {
-        router.replace("/login");
-      } else if (user?.status === "active") {
-        router.replace("/dashboard");
-      } else if (user?.status === "rejected") {
-        router.replace("/resubmit");
+  const handleLogout = async () => {
+    const token = getToken();
+    if (token) {
+      try {
+        await fetch(`${API_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } catch (e) {
+        console.error("Logout failed on server", e);
       }
-      // إذا كان معلقاً (pending)، يبقى هنا
     }
-  }, [isLoading, isAuthenticated, user, router]);
 
-  // 2. الاستعلام الذكي (Reactive Polling) في الخلفية
+    localStorage.removeItem("token");
+    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    router.push("/login");
+  };
+
   useEffect(() => {
-    // لا نستعلم إذا لم يكن الطالب مسجلاً ومعلقاً
-    if (!isAuthenticated || user?.status !== 'pending') return;
+    const checkStatus = async () => {
+      const token = getToken();
+      if (!token) {
+        router.push("/login");
+        return;
+      }
 
-    // تحديث بيانات المستخدم كل 15 ثانية بصمت
-    const interval = setInterval(() => {
-      fetchUser(); 
-    }, 15000);
+      try {
+        const response = await fetch(`${API_URL}/api/auth/status`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
 
-    // تحديث البيانات فوراً عندما يعود الطالب للمتصفح (Tab Active)
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        fetchUser();
+        if (data.data?.status === "active") {
+          router.push("/dashboard");
+        } else if (data.data?.status === "rejected") {
+          router.push("/resubmit");
+        }
+      } catch (e) {
+        console.error("Status check error", e);
+      } finally {
+        setLoading(false);
       }
     };
-    
+
+    checkStatus();
+    const interval = setInterval(checkStatus, 10000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        checkStatus();
+      }
+    };
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       clearInterval(interval);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [isAuthenticated, user?.status, fetchUser]);
+  }, [router]);
 
-  const handleLogout = async () => {
-    await logout(); // 🚀 الدالة المركزية تتكفل بتنظيف كل شيء (Cookies + API)
-    router.push("/login");
-  };
-
-  // 🚀 منع وميض الشاشة (FOUC) وعرض التحميل أثناء الفحص
-  if (isLoading || (isAuthenticated && user?.status !== 'pending')) {
+  if (loading) {
     return (
       <>
         <Navbar />
         <div className="min-h-screen flex items-center justify-center relative overflow-hidden" style={{ background: 'var(--gradient-surface)' }}>
           <div className="blob blob-1"></div>
           <div className="blob blob-2"></div>
-          <div className="card flex flex-col items-center gap-6 p-12 relative z-10">
+          <div className="card flex flex-col items-center gap-6 p-12">
             <div className="spinner spinner-lg"></div>
             <p style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--primary)' }}>
               جارٍ التحقق...
             </p>
           </div>
         </div>
-        <style jsx>{`
-          .blob { position: absolute; border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; animation: blob 8s ease-in-out infinite; }
-          .blob-1 { width: 400px; height: 400px; background: linear-gradient(135deg, rgba(11, 79, 108, 0.15), rgba(11, 122, 138, 0.15)); top: -10%; inset-inline-start: -10%; }
-          .blob-2 { width: 300px; height: 300px; background: linear-gradient(135deg, rgba(27, 189, 212, 0.15), rgba(16, 185, 129, 0.15)); bottom: 10%; inset-inline-end: -5%; animation-delay: -2s; }
-          @keyframes blob { 0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; } 50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; } }
-        `}</style>
       </>
     );
   }
@@ -95,7 +107,7 @@ export default function WaitingRoomPage() {
           <AlertCircleIcon size={40} />
         </div>        
 
-        <div className="card animate-fade-in-scale text-center relative z-10" style={{ maxWidth: '420px', width: '100%', padding: '3rem' }}>
+        <div className="card animate-fade-in-scale text-center" style={{ maxWidth: '420px', width: '100%', padding: '3rem' }}>
           <div className="waiting-icon-wrapper">
             <ClockIcon size={44} />
           </div>
@@ -129,7 +141,7 @@ export default function WaitingRoomPage() {
 
           <div className="banner banner-info mb-6 justify-center" style={{ borderStyle: 'dashed' }}>
             <AlertCircleIcon size={18} />
-            سيتم تحويلك تلقائياً للوحة التحكم عند الموافقة
+            سيُحولك تلقائياً للوحة التحكم عند الموافقة
           </div>
 
           <button
@@ -141,7 +153,7 @@ export default function WaitingRoomPage() {
           </button>
         </div>
 
-        <style jsx>{`
+        <style>{`
           .blob {
             position: absolute;
             border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
@@ -153,6 +165,14 @@ export default function WaitingRoomPage() {
             background: linear-gradient(135deg, rgba(11, 79, 108, 0.15), rgba(11, 122, 138, 0.15));
             top: -10%;
             inset-inline-start: -10%;
+          }
+          .blob-2 {
+            width: 300px;
+            height: 300px;
+            background: linear-gradient(135deg, rgba(27, 189, 212, 0.15), rgba(16, 185, 129, 0.15));
+            bottom: 10%;
+            inset-inline-end: -5%;
+            animation-delay: -2s;
           }
           .blob-3 {
             width: 300px;
@@ -197,10 +217,6 @@ export default function WaitingRoomPage() {
           @keyframes bounce {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-8px); }
-          }
-          @keyframes floatSoft {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); }
           }
         `}</style>
       </div>

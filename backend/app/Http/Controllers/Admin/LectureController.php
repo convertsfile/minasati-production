@@ -9,6 +9,7 @@ use App\Models\Lecture;
 use App\Models\LectureAttachment;
 use App\Services\FileUploadService;
 use App\Services\BackblazeStorageService;
+use App\Services\InternalJwtService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -28,9 +29,10 @@ class LectureController extends Controller
         $lectures = $course->lectures()->with(['attachments', 'homework'])->orderBy('order_index')->get();
 
         // 🚀 تحويل المرفقات لروابط سحابية صالحة قبل إرسالها للإدارة
+        // SEC-MAJOR-02: signed URLs (10-minute lifetime).
         $lectures->transform(function ($lecture) {
             $lecture->attachments->transform(function ($attachment) {
-                $attachment->file_url = $attachment->file_path ? $this->b2Service->getUrl($attachment->file_path) : null;
+                $attachment->file_url = $attachment->file_path ? $this->b2Service->getSignedUrl($attachment->file_path, 600) : null;
                 return $attachment;
             });
             return $lecture;
@@ -66,7 +68,7 @@ class LectureController extends Controller
         $lecture->load('attachments');
 
         $lecture->attachments->transform(function ($attachment) {
-            $attachment->file_url = $attachment->file_path ? $this->b2Service->getUrl($attachment->file_path) : null;
+            $attachment->file_url = $attachment->file_path ? $this->b2Service->getSignedUrl($attachment->file_path, 600) : null;
             return $attachment;
         });
 
@@ -101,7 +103,10 @@ class LectureController extends Controller
         if ($lecture->m3u8_path || $lecture->video_status !== 'pending') {
             try {
                 $goUrl = config('services.video.go_url', env('GO_ENGINE_URL')) . '/api/v1/video/' . $lectureId;
-                $response = Http::timeout(5)->withHeaders(['X-Internal-Secret' => env('JWT_SECRET')])->delete($goUrl);
+                $token = InternalJwtService::issue((string) $lectureId, 'video.delete', 60);
+                $response = Http::timeout(5)
+                    ->withHeaders(['Authorization' => 'Bearer ' . $token])
+                    ->delete($goUrl);
 
                 if (!$response->successful())
                     Log::warning("Go Engine returned non-success on delete lecture {$lectureId}");
@@ -154,7 +159,10 @@ class LectureController extends Controller
 
         try {
             $goUrl = config('services.video.go_url', env('GO_ENGINE_URL')) . '/api/v1/video/' . $lecture->id;
-            $response = Http::timeout(10)->withHeaders(['X-Internal-Secret' => env('JWT_SECRET')])->delete($goUrl);
+            $token = InternalJwtService::issue((string) $lecture->id, 'video.delete', 60);
+            $response = Http::timeout(10)
+                ->withHeaders(['Authorization' => 'Bearer ' . $token])
+                ->delete($goUrl);
         } catch (\Exception $e) {
             Log::error('Go Engine delete connection failed: ' . $e->getMessage());
         }
@@ -179,10 +187,13 @@ class LectureController extends Controller
 
     public function cancelUpload(Lecture $lecture)
     {
+        // 🚀 MAJOR FIX: استخدام Storage::disk('b2') مباشرة ليطابق destroyVideo
+        // ولكي يعمل Storage::fake('b2') في الاختبارات ويعزل الـ HTTP الحقيقي
         if ($lecture->raw_key) {
             try {
-                $this->fileUploadService->delete($lecture->raw_key); // استخدام السيرفيس الخاصة بنا للضمان
+                Storage::disk('b2')->delete($lecture->raw_key);
             } catch (\Exception $e) {
+                Log::warning('cancelUpload: failed to delete raw_key from b2: ' . $e->getMessage());
             }
         }
 
@@ -220,7 +231,7 @@ class LectureController extends Controller
         ]);
 
         // إضافة الرابط للرد
-        $attachment->file_url = $this->b2Service->getUrl($attachment->file_path);
+        $attachment->file_url = $this->b2Service->getSignedUrl($attachment->file_path, 600);
 
         return ApiResponse::success($attachment, 'تم إرفاق الملف سحابياً بنجاح', 201);
     }

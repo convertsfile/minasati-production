@@ -1,0 +1,49 @@
+# Prometheus scrape config for the Minassati platform.
+#
+# RELIABILITY-MINOR-02: vod-engine-alerts.yml uses
+# `up{job="vod-engine"}` but the repo shipped no prometheus.yml to
+# confirm the job name. This file pins the job names referenced in
+# the alert rules so they fire correctly.
+#
+# Run promtool to validate:
+#   promtool check rules deploy/prometheus/vod-engine-alerts.yml
+#   promtool check config deploy/prometheus/prometheus.yml
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'minassati-prometheus'
+
+# Load the platform's alert rules.
+rule_files:
+  - 'vod-engine-alerts.yml'
+
+# Scrape targets.
+scrape_configs:
+  - job_name: 'vod-engine'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['127.0.0.1:8080']
+        labels:
+          service: 'vod-engine'
+          tier: 'worker'
+
+  # Laravel backend /metrics endpoint (RELIABILITY-MAJOR-02).
+  - job_name: 'laravel-backend'
+    metrics_path: '/api/metrics'
+    static_configs:
+      - targets: ['127.0.0.1:8080']
+        labels:
+          service: 'laravel-backend'
+          tier: 'api'
+      # In a real deployment, scrape each PHP-FPM host on its
+      # own metrics port. Adjust as needed.
+
+  # Next.js frontend (no /metrics yet, kept for forward compat).
+  - job_name: 'nextjs-frontend'
+    static_configs:
+      - targets: ['127.0.0.1:3000']
+        labels:
+          service: 'nextjs-frontend'
+          tier: 'edge'

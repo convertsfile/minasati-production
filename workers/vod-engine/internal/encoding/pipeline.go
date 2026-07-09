@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/a_ashraf_tech/vod-engine/internal/auth"
 	"github.com/a_ashraf_tech/vod-engine/internal/b2"
 	"github.com/a_ashraf_tech/vod-engine/internal/circuitbreaker"
 	"github.com/a_ashraf_tech/vod-engine/internal/config"
@@ -27,6 +28,7 @@ import (
 	"github.com/a_ashraf_tech/vod-engine/internal/queue"
 	"github.com/a_ashraf_tech/vod-engine/internal/telemetry"
 	"github.com/a_ashraf_tech/vod-engine/internal/watchdog"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // ProgressFunc is called with a progress percentage (0-100).
@@ -626,6 +628,9 @@ func (p *Pipeline) validateUploadDirect(ctx context.Context, b2Prefix string, ex
 // downloadWithRateLimit downloads a file from B2, optionally rate-limiting via pv (OPS-15).
 // CB-01: All B2 download operations go through the circuit breaker.
 func (p *Pipeline) downloadWithRateLimit(ctx context.Context, rawKey, destPath string) error {
+	if p.b2Client == nil {
+		return fmt.Errorf("b2 client not configured (cannot download raw video)")
+	}
 	if p.b2CircuitBreaker != nil {
 		return p.b2CircuitBreaker.Execute(func() error {
 			if p.cfg.DownloadRateLimitKbps > 0 {
@@ -751,7 +756,14 @@ func SendProgressWebhook(laravelURL, jwtSecret, lectureID string, phase string, 
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Internal-Secret", jwtSecret)
+	if token, terr := signInternalJWT(jwtSecret, lectureID, "video.progress"); terr == nil {
+		req.Header.Set("Authorization", "Bearer "+token)
+	} else {
+		// في حال فشل توقيع JWT نُسجّل الخطأ فقط — لا نُرسل Shared Secret
+		// لأن Laravel صار يرفض هذا الـ Header منذ إصلاح العقد.
+		slog.Error("Failed to sign progress webhook JWT, request not sent", "err", terr)
+		return
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -786,7 +798,14 @@ func SendCompletionWebhook(laravelURL, jwtSecret, lectureID, m3u8Path, status st
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Internal-Secret", jwtSecret)
+	if token, terr := signInternalJWT(jwtSecret, lectureID, "video.encoded"); terr == nil {
+		req.Header.Set("Authorization", "Bearer "+token)
+	} else {
+		// في حال فشل توقيع JWT نُسجّل الخطأ فقط — لا نُرسل Shared Secret
+		// لأن Laravel صار يرفض هذا الـ Header منذ إصلاح العقد.
+		slog.Error("Failed to sign completion webhook JWT, request not sent", "err", terr)
+		return
+	}
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -801,6 +820,23 @@ func SendCompletionWebhook(laravelURL, jwtSecret, lectureID, m3u8Path, status st
 	}
 
 	slog.Info("Completion webhook sent successfully", "lecture_id", lectureID, "status", status)
+}
+
+// signInternalJWT مولّد التوكن الداخلي (متوافق 100% مع InternalJwtService في Laravel).
+func signInternalJWT(secret, subject, event string) (string, error) {
+	now := time.Now().Unix()
+	claims := jwt.MapClaims{
+		"iss":   auth.IssuerLaravel,
+		"aud":   auth.AudienceEngine,
+		"sub":   subject,
+		"iat":   now,
+		"exp":   now + 60,
+		"kid":   auth.KidV1,
+		"event": event,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token.Header["kid"] = auth.KidV1
+	return token.SignedString([]byte(secret))
 }
 
 // limitedWriter is an io.Writer that writes at most limit bytes to its underlying writer.

@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\OtpService;
 use App\Services\DeviceManagerService;
 use App\Services\FileUploadService;
+use App\Services\PlanService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -35,6 +36,19 @@ class AuthController extends Controller
      */
     public function register(RegisterRequest $request): JsonResponse
     {
+        // 🚀 MAJOR: فرض حدّ الطلاب المسموح بهم في الباقة الحالية (نفس نموذج فحص تخزين الفيديو)
+        $planLimits = PlanService::getCurrentPlanLimits();
+        $maxStudents = $planLimits['students'] ?? 0;
+        $currentStudents = User::where('role', 'student')->count();
+
+        if ($maxStudents > 0 && $currentStudents >= $maxStudents) {
+            return ApiResponse::error(
+                'تم بلوغ الحد الأقصى لعدد الطلاب المسموح بهم في الباقة الحالية.',
+                'ERR_STUDENT_LIMIT',
+                403
+            );
+        }
+
         return DB::transaction(function () use ($request) {
 
             // رفع صورة الهوية / شهادة الميلاد بأمان
@@ -150,8 +164,17 @@ class AuthController extends Controller
             );
         }
 
-        // إصدار توكن جديد آمن عبر Laravel Sanctum
-        $token = $user->createToken($userAgent)->plainTextToken;
+        // 🛡️ جلسة نشطة واحدة فقط (متطلب AGENTS.md):
+        //   أي تسجيل دخول جديد يُلغي كل الـ Sanctum tokens السابقة للمستخدم
+        //   داخل نفس الـ transaction لضمان ذرّيّة الإلغاء + الإصدار.
+        $token = DB::transaction(function () use ($user, $userAgent) {
+            DB::table('personal_access_tokens')
+                ->where('tokenable_id', $user->id)
+                ->where('tokenable_type', User::class)
+                ->delete();
+
+            return $user->createToken($userAgent)->plainTextToken;
+        });
 
         // إرجاع البيانات مغلفة بالـ UserResource الحارس مع التوكن
         return ApiResponse::success([

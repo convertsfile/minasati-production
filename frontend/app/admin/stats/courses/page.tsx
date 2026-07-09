@@ -1,15 +1,19 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminSidebar from '@/app/components/AdminSidebar';
-import { useAuthGuard } from '../../../hooks/useAuthGuard'; // 🚀 الدرع المركزي
-import api from '@/lib/axios'; // 🚀 العميل الذكي للشبكة
 import {
   BarChartIcon, RefreshIcon, FileTextIcon, UsersIcon, XIcon,
   SearchIcon, SettingsIcon, UserIcon, CreditCardIcon, BookIcon,
-  CheckIcon, CheckCircleIcon, AlertCircleIcon
+  CheckIcon, CheckCircleIcon
 } from '@/app/components/Icons';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+const getToken = () => {
+  return document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] || localStorage.getItem('token');
+};
 
 interface CourseStat {
   id: number;
@@ -20,21 +24,17 @@ interface CourseStat {
 
 export default function CourseStatsPage() {
   const router = useRouter();
-
-  // 🚀 درع الحماية: يطرد المتطفلين فوراً ويعرض شاشة التحميل
-  const { isChecking } = useAuthGuard(['admin']);
-
   const [stats, setStats] = useState<CourseStat[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // إعدادات النوافذ المنبثقة (Modals)
+  // Modal States
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
   const [selectedCourseTitle, setSelectedCourseTitle] = useState<string | null>(null);
   const [courseStudents, setCourseStudents] = useState<any[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
 
-  // إعدادات بروفايل الطالب
+  // Profile management states
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   const [studentProgress, setStudentProgress] = useState<any>(null);
   const [allCourses, setAllCourses] = useState<any[]>([]);
@@ -43,48 +43,31 @@ export default function CourseStatsPage() {
   const [togglingCourseId, setTogglingCourseId] = useState<number | null>(null);
   const [loadingProgress, setLoadingProgress] = useState(false);
 
-  // 🚀 نظام التنبيهات الموحد الأنيق
+  // Toast
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({ visible: false, message: '', type: 'success' });
-  const showToast = useCallback((message: string, type: 'success' | 'error') => {
+  const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ visible: true, message, type });
-    setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 4000);
-  }, []);
-
-  // 🚀 تجميد التمرير (Scroll Lock) بشكل آمن
-  useEffect(() => {
-    if (selectedCourseId || selectedStudent) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [selectedCourseId, selectedStudent]);
-
-  useEffect(() => {
-    if (!isChecking) {
-      fetchCourseStats();
-    }
-  }, [isChecking]);
+    setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 3000);
+  };
 
   const fetchCourseStats = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/admin/wallet/course-stats');
-      
-      const rawData = response.data?.data || response.data || [];
-      // 🚀 حماية المصفوفة
-      const validData = Array.isArray(rawData) ? rawData : [];
-      
-      const mappedStats: CourseStat[] = validData.map((s: any) => ({
-        id: s.id,
-        title: s.title || 'كورس بدون عنوان',
-        pricePoints: Number(s.price_points ?? s.pricePoints ?? 0),
-        studentsCount: Number(s.students_count ?? s.studentsCount ?? 0),
-      }));
+      const token = getToken();
+      if (!token) { router.push('/login'); return; }
 
-      setStats(mappedStats);
-    } catch (e: any) {
-      showToast(e?.message || 'فشل تحميل إحصائيات الكورسات', 'error');
+      const res = await fetch(`${API_URL}/api/admin/wallet/course-stats`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+
+      if (res.ok) {
+        const result = await res.json();
+        setStats(result.data || []);
+      } else {
+        showToast('فشل تحميل إحصائيات الكورسات', 'error');
+      }
+    } catch (e) {
+      showToast('خطأ في الاتصال بالخادم', 'error');
     } finally {
       setLoading(false);
     }
@@ -96,25 +79,20 @@ export default function CourseStatsPage() {
     setLoadingStudents(true);
     setCourseStudents([]);
     setStudentSearchQuery('');
-    
     try {
-      const response = await api.get(`/admin/wallet/courses/${courseId}/students`);
-      
-      const studentsData = response.data?.data?.students || response.data?.students || [];
-      // 🚀 حماية المصفوفة
-      const validStudents = Array.isArray(studentsData) ? studentsData : [];
-      
-      const mappedStudents = validStudents.map((st: any) => ({
-        id: st.id,
-        fullName: st.full_name ?? st.fullName ?? 'غير محدد',
-        phone: st.phone ?? '',
-        academicYear: st.academic_year ?? st.academicYear ?? 'غير محدد',
-        subscribedAt: st.subscribed_at ?? st.subscribedAt ?? null,
-      }));
-
-      setCourseStudents(mappedStudents);
-    } catch (e: any) {
-      showToast(e?.message || 'فشل تحميل قائمة الطلاب المشتركين', 'error');
+      const token = getToken();
+      if (!token) return;
+      const res = await fetch(`${API_URL}/api/admin/wallet/courses/${courseId}/students`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+      if (res.ok) {
+        const result = await res.json();
+        setCourseStudents(result.data.students || []);
+      } else {
+        showToast('فشل تحميل قائمة الطلاب', 'error');
+      }
+    } catch (e) {
+      showToast('خطأ في الاتصال بالخادم', 'error');
     } finally {
       setLoadingStudents(false);
     }
@@ -123,19 +101,19 @@ export default function CourseStatsPage() {
   const fetchStudentProgress = async (studentId: number) => {
     setLoadingProgress(true);
     try {
-      const response = await api.get(`/admin/student-progress/${studentId}`);
-      const data = response.data?.data || response.data || {};
-      
-      // 🚀 تأمين هيكل البيانات لمنع الانهيار الداخلي
-      const safeData = {
-        student: data.student || {},
-        courses: Array.isArray(data.courses) ? data.courses : []
-      };
-      
-      setStudentProgress(safeData);
-      setWalletAmount(safeData.student.walletBalance?.toString() || safeData.student.wallet_balance?.toString() || '0');
-    } catch (error: any) {
-      showToast(error?.message || 'فشل تحميل بيانات تقدم الطالب', 'error');
+      const token = getToken();
+      if (!token) return;
+
+      const response = await fetch(`${API_URL}/api/admin/student-progress/${studentId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setStudentProgress(data.data);
+        setWalletAmount(data.data.student.walletBalance.toString());
+      }
+    } catch (error) {
+      console.error('Error fetching student progress:', error);
     } finally {
       setLoadingProgress(false);
     }
@@ -143,11 +121,18 @@ export default function CourseStatsPage() {
 
   const fetchAllCourses = async () => {
     try {
-      const response = await api.get('/admin/courses');
-      const data = response.data?.data || response.data || [];
-      setAllCourses(Array.isArray(data) ? data : []);
+      const token = getToken();
+      if (!token) return;
+
+      const response = await fetch(`${API_URL}/api/admin/courses`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAllCourses(data.data || []);
+      }
     } catch (error) {
-      console.error('Error fetching all courses:', error);
+      console.error('Error fetching courses:', error);
     }
   };
 
@@ -162,19 +147,30 @@ export default function CourseStatsPage() {
     if (!selectedStudent) return;
     setUpdatingWallet(true);
     try {
-      // 🚀 إرسال الرقم الفعلي دون مسح الكسور إن وجدت
-      await api.post(`/admin/users/${selectedStudent.id}/wallet`, { 
-        balance: Number(walletAmount) || 0 
+      const token = getToken();
+      if (!token) return;
+
+      const response = await fetch(`${API_URL}/api/admin/users/${selectedStudent.id}/wallet`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ balance: parseInt(walletAmount) }),
       });
 
-      showToast('تم تحديث رصيد المحفظة بنجاح!', 'success');
-      
-      fetchStudentProgress(selectedStudent.id);
-      if (selectedCourseId !== null && selectedCourseTitle !== null) {
-        fetchCourseStudents(selectedCourseId, selectedCourseTitle);
+      if (response.ok) {
+        showToast('تم تحديث رصيد المحفظة بنجاح!', 'success');
+        fetchStudentProgress(selectedStudent.id);
+        if (selectedCourseId !== null && selectedCourseTitle !== null) {
+          fetchCourseStudents(selectedCourseId, selectedCourseTitle);
+        }
+      } else {
+        showToast('فشل تحديث رصيد المحفظة', 'error');
       }
-    } catch (error: any) {
-      showToast(error?.message || error?.error || 'فشل تحديث رصيد المحفظة', 'error');
+    } catch (error) {
+      showToast('خطأ في الاتصال بالخادم', 'error');
     } finally {
       setUpdatingWallet(false);
     }
@@ -184,326 +180,292 @@ export default function CourseStatsPage() {
     if (!selectedStudent) return;
     setTogglingCourseId(courseId);
     try {
-      await api.post(`/admin/users/${selectedStudent.id}/courses/${courseId}/toggle`);
+      const token = getToken();
+      if (!token) return;
 
-      showToast('تم تغيير حالة الاشتراك للكورس بنجاح!', 'success');
-      
-      fetchStudentProgress(selectedStudent.id);
-      if (selectedCourseId !== null && selectedCourseTitle !== null) {
-        fetchCourseStudents(selectedCourseId, selectedCourseTitle);
+      const response = await fetch(`${API_URL}/api/admin/users/${selectedStudent.id}/courses/${courseId}/toggle`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+      });
+
+      if (response.ok) {
+        showToast('تم تغيير حالة الاشتراك للكورس بنجاح!', 'success');
+        fetchStudentProgress(selectedStudent.id);
+        if (selectedCourseId !== null && selectedCourseTitle !== null) {
+          fetchCourseStudents(selectedCourseId, selectedCourseTitle);
+        }
+      } else {
+        showToast('فشل تغيير حالة الاشتراك', 'error');
       }
-    } catch (error: any) {
-      showToast(error?.message || error?.error || 'فشل تغيير حالة الاشتراك', 'error');
+    } catch (error) {
+      showToast('خطأ في الاتصال بالخادم', 'error');
     } finally {
       setTogglingCourseId(null);
     }
   };
 
-  const totalEnrollments = stats.reduce((acc, curr) => acc + curr.studentsCount, 0);
+  useEffect(() => {
+    fetchCourseStats();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  if (isChecking) {
-    return (
-      <div className="admin-layout relative">
-        <AdminSidebar />
-        <main className="admin-content flex items-center justify-center min-h-[60vh]">
-          <div className="loading-state text-center flex flex-col items-center">
-            <div className="spinner spinner-primary spinner-lg mb-4 mx-auto" />
-            <p className="font-bold text-muted text-lg">جاري تجهيز إحصائيات الكورسات...</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  const totalEnrollments = stats.reduce((acc, curr) => acc + curr.studentsCount, 0);
 
   return (
     <div className="admin-layout relative">
       <AdminSidebar />
 
-      {/* 🚀 نظام التنبيهات الموحد العائم */}
-      <div 
-        className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] transition-all duration-300" 
-        style={{ 
-          opacity: toast.visible ? 1 : 0, 
-          transform: toast.visible ? 'translate(-50%, 0)' : 'translate(-50%, -20px)', 
-          pointerEvents: toast.visible ? 'auto' : 'none' 
-        }}
-      >
-        <div className={`flex items-center gap-3 px-6 py-3.5 rounded-full shadow-2xl text-sm font-bold ${toast.type === 'success' ? 'bg-green-600 text-white shadow-green-600/30' : 'bg-red-600 text-white shadow-red-600/30'}`}>
-          {toast.type === 'success' ? <CheckCircleIcon size={20} /> : <AlertCircleIcon size={20} />}
-          <span>{toast.message}</span>
+      {/* Toast */}
+      <div className={`toast-container ${toast.visible ? 'show' : ''}`}>
+        <div className={`toast-content ${toast.type}`}>
+          {toast.type === 'success' ? <CheckCircleIcon size={18} /> : <XIcon size={18} />}
+          {toast.message}
         </div>
       </div>
 
       <main className="admin-content">
-        <div className="page-header flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div className="page-header">
           <div>
-            <h1 className="page-title text-3xl font-black text-gray-900 flex items-center gap-3">
-              <BarChartIcon size={32} className="text-primary" /> 
-              إحصائيات الكورسات والاشتراكات
-            </h1>
-            <p className="page-subtitle text-base mt-2">تتبع أعداد الطلاب المشتركين ومعدلات الإقبال على الكورسات المختلفة.</p>
+            <h1 className="page-title flex items-center gap-2"><BarChartIcon size={26} /> إحصائيات الكورسات والاشتراكات</h1>
+            <p className="page-subtitle">تتبع أعداد الطلاب المشتركين ومعدلات الإقبال على الكورسات المختلفة.</p>
           </div>
-          <button onClick={fetchCourseStats} disabled={loading} className="btn btn-outline font-bold bg-white shadow-sm border-gray-200 rounded-xl px-6 py-2.5 hover:bg-gray-50 transition-colors">
-            {loading ? <span className="spinner spinner-primary w-5 h-5 border-2 mx-auto" /> : <span className="flex items-center gap-2"><RefreshIcon size={18} /> تحديث الإحصائيات</span>}
-          </button>
+          <button onClick={fetchCourseStats} className="btn btn-outline font-bold"><RefreshIcon size={16} /> تحديث</button>
         </div>
 
         {/* Highlight Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <div className="card text-right p-8 border-r-4 border-r-primary shadow-sm hover:shadow-md transition-shadow bg-white rounded-2xl">
-            <span className="text-sm font-bold text-gray-500 block mb-3">إجمالي الكورسات النشطة</span>
-            <span className="text-5xl font-black text-primary font-mono">{stats.length} <span className="text-2xl text-gray-400 font-bold">كورس</span></span>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+          <div className="card text-right p-6" style={{ borderInlineStartWidth: '5px', borderInlineStartColor: 'var(--primary)' }}>
+            <span className="text-xs text-muted block mb-1">إجمالي الكورسات النشطة</span>
+            <span className="text-3xl font-black text-gray-800">{stats.length}</span>
           </div>
-          <div className="card text-right p-8 border-r-4 border-r-success shadow-sm hover:shadow-md transition-shadow bg-white rounded-2xl">
-            <span className="text-sm font-bold text-gray-500 block mb-3">إجمالي اشتراكات الطلاب</span>
-            <span className="text-5xl font-black text-success font-mono">{totalEnrollments.toLocaleString('en-US')} <span className="text-2xl text-gray-400 font-bold">اشتراك</span></span>
+          <div className="card text-right p-6" style={{ borderInlineStartWidth: '5px', borderInlineStartColor: '#10b981' }}>
+            <span className="text-xs text-muted block mb-1">إجمالي اشتراكات الطلاب</span>
+            <span className="text-3xl font-black text-success">{totalEnrollments}</span>
           </div>
         </div>
 
         {loading ? (
-          <div className="card border border-gray-100 flex justify-center p-16 shadow-sm rounded-2xl bg-white">
-            <div className="spinner spinner-primary spinner-lg" />
+          <div className="loading-state">
+            <div className="spinner spinner-lg"></div>
+            <p className="mt-4 font-bold">جاري تحميل الإحصائيات...</p>
           </div>
         ) : stats.length === 0 ? (
-          <div className="empty-state bg-white rounded-2xl py-20 shadow-sm text-center">
-            <div className="empty-state-icon bg-gray-50 w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-inner">
-              <FileTextIcon size={48} className="text-gray-400" />
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <FileTextIcon size={36} />
             </div>
-            <h3 className="text-2xl font-black text-gray-800">لا توجد كورسات مسجلة</h3>
-            <p className="text-muted mt-2 font-medium">قم بإنشاء كورس من صفحة الكورسات للبدء في تتبع الإحصائيات.</p>
+            <h3>لا توجد كورسات مسجلة</h3>
+            <p>قم بإنشاء كورس من صفحة الكورسات للبدء.</p>
           </div>
         ) : (
-          <div className="table-container border border-gray-200 rounded-2xl overflow-hidden shadow-sm bg-white">
-            <div className="overflow-x-auto w-full">
-              <table className="table w-full m-0 min-w-[800px]">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="font-bold text-gray-700 py-5 px-6 text-right whitespace-nowrap">الكورس التعليمي</th>
-                    <th className="font-bold text-gray-700 py-5 px-6 text-center whitespace-nowrap">سعر الاشتراك (بالنقاط)</th>
-                    <th className="font-bold text-gray-700 py-5 px-6 text-center whitespace-nowrap">عدد الطلاب المشتركين</th>
-                    <th className="font-bold text-gray-700 py-5 px-6 text-center min-w-[250px]">معدل الإقبال والتوزيع</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {stats.map((course) => {
-                    const pct = totalEnrollments > 0 ? Math.round((course.studentsCount / totalEnrollments) * 100) : 0;
-                    return (
-                      <tr 
-                        key={course.id} 
-                        className="cursor-pointer hover:bg-blue-50/50 transition-colors group" 
-                        onClick={() => fetchCourseStudents(course.id, course.title)}
-                      >
-                        <td className="py-5 px-6">
-                          <span className="font-black text-gray-900 group-hover:text-primary transition-colors text-base flex items-center gap-3">
-                            <BookIcon size={20} className="text-gray-400 group-hover:text-primary" />
-                            {course.title}
-                          </span>
-                        </td>
-                        <td className="py-5 px-6 text-center">
-                          <span className="badge font-bold px-4 py-1.5 text-sm bg-green-50 text-green-700 border border-green-200 rounded-lg">
-                            {course.pricePoints.toLocaleString('en-US')} ج.م
-                          </span>
-                        </td>
-                        <td className="py-5 px-6 text-center">
-                          <span className="font-black text-gray-800 text-xl font-mono">
-                            {course.studentsCount.toLocaleString('en-US')} <span className="text-sm text-gray-500 font-bold">طالب</span>
-                          </span>
-                        </td>
-                        <td className="py-5 px-6">
-                          <div className="flex items-center justify-center gap-4">
-                            <span className="text-xs text-gray-500 font-bold w-10 text-left font-mono">{pct}%</span>
-                            <div className="flex-1 w-full bg-gray-100 h-2.5 rounded-full overflow-hidden shadow-inner border border-gray-200/50">
-                              <div className="bg-gradient-to-l from-primary to-blue-400 h-full rounded-full transition-all duration-1000" style={{ width: `${pct}%` }}></div>
-                            </div>
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>الكورس التعليمي</th>
+                  <th className="text-center">سعر الاشتراك (بالنقاط)</th>
+                  <th className="text-center">عدد الطلاب المشتركين</th>
+                  <th className="text-center">النسبة من إجمالي الاشتراكات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.map((course) => {
+                  const pct = totalEnrollments > 0 ? Math.round((course.studentsCount / totalEnrollments) * 100) : 0;
+                  return (
+                    <tr key={course.id} className="cursor-pointer" onClick={() => fetchCourseStudents(course.id, course.title)}>
+                      <td>
+                        <span className="font-bold text-primary hover:underline text-base">{course.title}</span>
+                      </td>
+                      <td className="text-center">
+                        <span className="badge badge-success px-3 py-1 font-bold">{course.pricePoints} EGP</span>
+                      </td>
+                      <td className="text-center">
+                        <span className="font-black text-gray-800 text-lg">{course.studentsCount} طالب/ة</span>
+                      </td>
+                      <td>
+                        <div className="flex items-center justify-center gap-3">
+                          <span className="text-xs text-muted font-bold w-8 text-left">{pct}%</span>
+                          <div className="flex-1 max-w-[150px] bg-gray-100 h-2 rounded-full overflow-hidden">
+                            <div className="bg-primary h-full" style={{ width: `${pct}%` }}></div>
                           </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
 
-        {/* 🚀 نافذة: الطلاب المشتركين في الكورس */}
+        {/* Course Students Modal */}
         {selectedCourseId !== null && (
-          <div className="fixed inset-0 flex items-center justify-center z-[100] p-4 animate-fade-in" style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={() => setSelectedCourseId(null)}>
-            <div className="card w-full max-w-4xl max-h-[85vh] overflow-y-auto transform transition-all shadow-2xl text-right bg-white p-0 rounded-2xl animate-scale-up border border-gray-100" onClick={e => e.stopPropagation()}>
-              <div className="flex justify-between items-center p-6 border-b border-gray-100 bg-white sticky top-0 z-10 shadow-sm">
-                <h2 className="text-xl font-black text-primary flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-50 text-primary flex items-center justify-center rounded-full shadow-inner"><UsersIcon size={20} /></div>
-                  الطلاب المشتركون في: {selectedCourseTitle}
-                </h2>
-                <button onClick={() => setSelectedCourseId(null)} className="w-10 h-10 rounded-full bg-gray-50 border border-gray-200 text-gray-400 hover:text-error hover:border-red-200 hover:bg-red-50 flex items-center justify-center transition-colors">
-                  <XIcon size={20} />
-                </button>
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={() => setSelectedCourseId(null)}>
+            <div className="card w-full max-w-2xl max-h-[80vh] overflow-y-auto transform transition-all shadow-2xl text-right bg-white p-6 rounded-xl" onClick={e => e.stopPropagation()}>
+              <div className="flex justify-between items-center mb-6 pb-4 border-b">
+                <h2 className="text-xl font-bold text-primary flex items-center gap-2"><UsersIcon size={22} /> الطلاب المشتركون في كورس: {selectedCourseTitle}</h2>
+                <button onClick={() => setSelectedCourseId(null)} className="text-gray-400 hover:text-error text-2xl font-bold transition-colors"><XIcon size={22} /></button>
               </div>
 
-              <div className="p-6">
-                <div className="mb-6 relative">
-                  <SearchIcon size={18} className="absolute top-1/2 -translate-y-1/2 right-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="ابحث عن طالب بالاسم أو الهاتف..."
-                    value={studentSearchQuery}
-                    onChange={e => setStudentSearchQuery(e.target.value)}
-                    className="input-field w-full pr-12 py-3 bg-gray-50 focus:bg-white transition-colors font-medium border-gray-200 rounded-xl"
-                    dir="rtl"
-                  />
+              <div className="mb-4 relative">
+                <SearchIcon size={16} className="absolute top-1/2 -translate-y-1/2 right-3 text-muted" />
+                <input
+                  type="text"
+                  placeholder="ابحث عن طالب بالاسم أو الهاتف..."
+                  value={studentSearchQuery}
+                  onChange={e => setStudentSearchQuery(e.target.value)}
+                  className="input-field w-full pr-10 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+                  dir="rtl"
+                />
+              </div>
+
+              {loadingStudents ? (
+                <div className="loading-state">
+                  <div className="spinner spinner-lg"></div>
+                  <p className="mt-4 font-bold">جاري تحميل قائمة الطلاب...</p>
                 </div>
+              ) : (() => {
+                const filtered = courseStudents.filter(s => 
+                  s.fullName.toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
+                  s.phone.includes(studentSearchQuery)
+                );
 
-                {loadingStudents ? (
-                  <div className="loading-state h-64 border border-gray-100 rounded-xl flex flex-col justify-center items-center bg-gray-50/50">
-                    <div className="spinner spinner-primary spinner-lg"></div>
-                    <p className="mt-4 font-bold text-muted">جاري تحميل قائمة الطلاب...</p>
-                  </div>
-                ) : (() => {
-                  // 🚀 الفلترة الآمنة ضد القيم الفارغة
-                  const filtered = courseStudents.filter(s => 
-                    (s.fullName || '').toLowerCase().includes(studentSearchQuery.toLowerCase()) ||
-                    (s.phone || '').includes(studentSearchQuery)
-                  );
-
-                  return filtered.length === 0 ? (
-                    <div className="text-center py-16 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
-                      <UsersIcon size={48} className="mx-auto mb-4 text-gray-300" />
-                      <p className="text-gray-500 font-bold">لا يوجد طلاب مشتركين يطابقون كلمة البحث.</p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto border border-gray-200 rounded-xl shadow-sm bg-white">
-                      <table className="w-full text-right text-sm m-0 min-w-[800px]">
-                        <thead className="bg-gray-50 border-b border-gray-200">
-                          <tr>
-                            <th className="py-4 px-5 font-bold text-gray-700 whitespace-nowrap">الاسم</th>
-                            <th className="py-4 px-5 font-bold text-gray-700 whitespace-nowrap">الهاتف</th>
-                            <th className="py-4 px-5 font-bold text-gray-700 text-center whitespace-nowrap">السنة الدراسية</th>
-                            <th className="py-4 px-5 font-bold text-gray-700 text-center whitespace-nowrap">تاريخ الاشتراك</th>
-                            <th className="py-4 px-5 font-bold text-gray-700 text-center whitespace-nowrap">إجراءات</th>
+                return filtered.length === 0 ? (
+                  <p className="text-muted text-center py-8">لا يوجد طلاب مشتركين يطابقون البحث.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-right text-xs">
+                      <thead>
+                        <tr className="border-b text-gray-500">
+                          <th className="pb-2">الاسم</th>
+                          <th className="pb-2">الهاتف</th>
+                          <th className="pb-2">السنة الدراسية</th>
+                          <th className="pb-2">تاريخ الاشتراك</th>
+                          <th className="pb-2 text-center">إجراءات</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {filtered.map(student => (
+                          <tr key={student.id}>
+                            <td className="py-2.5 font-bold text-gray-800">{student.fullName}</td>
+                            <td className="py-2.5 font-mono">{student.phone}</td>
+                            <td className="py-2.5">
+                              <span className="badge badge-primary text-[10px]">
+                                {student.academicYear || 'غير محدد'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 text-muted">
+                              {student.subscribedAt ? new Date(student.subscribedAt).toLocaleDateString('ar-EG') : 'غير معروف'}
+                            </td>
+                            <td className="py-2.5 text-center">
+                              <button
+                                onClick={() => handleOpenProfile(student)}
+                                className="btn btn-xs btn-outline font-bold text-xs flex items-center gap-1"
+                                style={{ padding: '0.25rem 0.75rem' }}
+                              >
+                                <SettingsIcon size={14} /> إدارة البروفايل
+                              </button>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {filtered.map(student => (
-                            <tr key={student.id} className="hover:bg-gray-50/80 transition-colors">
-                              <td className="py-4 px-5 font-black text-gray-900">{student.fullName}</td>
-                              <td className="py-4 px-5 font-mono font-bold text-gray-600" dir="ltr">{student.phone}</td>
-                              <td className="py-4 px-5 text-center">
-                                <span className="text-xs font-bold text-primary bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
-                                  {student.academicYear || 'غير محدد'}
-                                </span>
-                              </td>
-                              <td className="py-4 px-5 text-center text-xs font-bold text-gray-500">
-                                {student.subscribedAt ? new Date(student.subscribedAt).toLocaleDateString('ar-EG', { year: 'numeric', month: 'short', day: 'numeric' }) : 'غير معروف'}
-                              </td>
-                              <td className="py-4 px-5 text-center">
-                                <button
-                                  onClick={() => handleOpenProfile(student)}
-                                  className="btn btn-sm btn-outline font-bold flex items-center justify-center gap-1.5 mx-auto bg-white shadow-sm border-gray-300 hover:bg-gray-50 rounded-lg px-4"
-                                >
-                                  <SettingsIcon size={14} /> إدارة
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  );
-                })()}
-              </div>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
 
-        {/* 🚀 نافذة: إدارة بروفايل الطالب (التي تفتح من داخل الكورس) */}
+        {/* Profile Management Modal */}
         {selectedStudent && (
-          <div className="profile-overlay z-[200] fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-end" onClick={() => setSelectedStudent(null)}>
-            <div className="profile-fullscreen shadow-2xl border-l border-gray-200 bg-white w-full max-w-2xl h-full overflow-y-auto animate-slide-in-right" onClick={e => e.stopPropagation()}>
-              <div className="profile-header bg-white border-b border-gray-100 p-6 flex justify-between items-center sticky top-0 z-10">
-                <h2 className="profile-header-title text-xl font-black text-gray-900 flex items-center gap-3">
-                  <div className="w-12 h-12 bg-blue-50 text-primary flex items-center justify-center rounded-full shadow-inner"><UserIcon size={24} /></div>
-                  ملف الطالب: {selectedStudent.fullName}
+          <div className="profile-overlay" onClick={() => setSelectedStudent(null)}>
+            <div className="profile-fullscreen" onClick={e => e.stopPropagation()}>
+              <div className="profile-header">
+                <h2 className="profile-header-title">
+                  <UserIcon size={20} />
+                  إدارة بروفايل الطالب: {selectedStudent.fullName}
                 </h2>
-                <button onClick={() => setSelectedStudent(null)} className="profile-close-btn w-10 h-10 flex items-center justify-center rounded-full bg-gray-50 border border-gray-200 hover:bg-red-50 hover:text-error hover:border-red-200 transition-colors">
-                  <XIcon size={20} />
+                <button onClick={() => setSelectedStudent(null)} className="profile-close-btn">
+                  <XIcon size={24} />
                 </button>
               </div>
 
               {loadingProgress || !studentProgress ? (
-                <div className="loading-state h-[calc(100vh-100px)] flex flex-col justify-center items-center">
-                  <div className="spinner spinner-primary spinner-lg mb-4"></div>
-                  <p className="font-bold text-gray-500">جاري تحميل بيانات ومستويات الطالب...</p>
+                <div className="loading-state">
+                  <div className="spinner spinner-lg"></div>
+                  <p className="mt-4 font-bold">جاري تحميل بيانات الطالب والتقدم...</p>
                 </div>
               ) : (
-                <div className="space-y-6 p-6">
+                <div className="space-y-6">
                   
                   {/* 1. Student Basic Details */}
-                  <div className="profile-info-grid grid grid-cols-2 gap-4 bg-gray-50 p-5 rounded-2xl border border-gray-200 shadow-inner">
-                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                      <span className="text-xs font-bold text-gray-400 block mb-1.5 uppercase tracking-wider">السنة الدراسية</span>
-                      <span className="font-black text-primary text-sm">{studentProgress.student?.academicYear || selectedStudent.academicYear || 'غير محدد'}</span>
+                  <div className="profile-info-grid">
+                    <div>
+                      <span className="text-xs text-muted block">السنة الدراسية</span>
+                      <span className="font-bold">{studentProgress.student.academicYear || selectedStudent.academicYear || 'غير محدد'}</span>
                     </div>
-                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                      <span className="text-xs font-bold text-gray-400 block mb-1.5 uppercase tracking-wider">رقم هاتف الطالب</span>
-                      <span className="font-black text-gray-800 text-sm font-mono" dir="ltr">{studentProgress.student?.phone || '—'}</span>
+                    <div>
+                      <span className="text-xs text-muted block">رقم هاتف الطالب</span>
+                      <span className="font-bold" dir="ltr">{studentProgress.student.phone}</span>
                     </div>
-                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                      <span className="text-xs font-bold text-gray-400 block mb-1.5 uppercase tracking-wider">رقم ولي الأمر</span>
-                      <span className="font-black text-gray-800 text-sm font-mono" dir="ltr">{studentProgress.student?.parentPhone || 'غير محدد'}</span>
+                    <div>
+                      <span className="text-xs text-muted block">رقم هاتف ولي الأمر</span>
+                      <span className="font-bold" dir="ltr">{studentProgress.student.parentPhone || 'غير محدد'}</span>
                     </div>
-                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                      <span className="text-xs font-bold text-gray-400 block mb-1.5 uppercase tracking-wider">رصيد المحفظة</span>
-                      <span className="font-black text-success text-lg">{studentProgress.student?.walletBalance || 0} ج.م</span>
+                    <div>
+                      <span className="text-xs text-muted block">رصيد المحفظة</span>
+                      <span className="font-bold text-success">{studentProgress.student.walletBalance} ج.م</span>
                     </div>
                   </div>
 
                   {/* 2. Wallet Adjustment */}
-                  <div className="card p-6 border border-green-200 bg-green-50/50 rounded-2xl shadow-sm">
-                    <h3 className="font-black text-success mb-4 flex items-center gap-2 text-lg"><CreditCardIcon size={22} /> إدارة رصيد المحفظة</h3>
-                    <div className="flex gap-4 items-end max-w-md">
+                  <div className="card p-4 border border-success/20 bg-success/5 rounded-lg">
+                    <h3 className="font-bold text-success mb-3 flex items-center gap-2"><CreditCardIcon size={20} /> إدارة رصيد المحفظة</h3>
+                    <div className="flex gap-3 items-end max-w-md">
                       <div className="flex-1">
-                        <label className="text-xs font-bold text-gray-700 mb-2 block">الرصيد الجديد (ج.م)</label>
+                        <label className="text-xs text-muted mb-1 block">الرصيد الجديد (بالنقاط/جنيه)</label>
                         <input
-                          type="text" // استخدام text للتحكم الكامل ومنع الكسور إن لزم الأمر
-                          className="input-field w-full font-black text-xl bg-white border-green-200 focus:border-green-500 shadow-sm rounded-xl py-3"
+                          type="number"
+                          className="input-field w-full font-bold text-lg"
                           value={walletAmount}
-                          // 🚀 حماية حقل الإدخال
-                          onChange={e => setWalletAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+                          onChange={e => setWalletAmount(e.target.value)}
+                          min="0"
                         />
                       </div>
                       <button
                         onClick={handleUpdateWallet}
-                        disabled={updatingWallet || walletAmount === ''}
-                        className="btn btn-success shadow-lg shadow-green-200 font-bold rounded-xl"
-                        style={{ padding: '0 1.5rem', height: '54px' }}
+                        disabled={updatingWallet}
+                        className="btn btn-success"
+                        style={{ padding: '0.75rem 1.5rem', height: '42px' }}
                       >
-                        {updatingWallet ? <span className="spinner spinner-light w-5 h-5 border-2" /> : 'تحديث الرصيد'}
+                        {updatingWallet ? 'جاري الحفظ...' : 'تحديث الرصيد'}
                       </button>
                     </div>
                   </div>
 
                   {/* 3. Course Enrollment Controls & Lecture Progress */}
                   <div className="space-y-4">
-                    <h3 className="font-black border-b border-gray-100 pb-4 flex items-center gap-2 text-xl text-gray-900 mt-8">
-                      <BookIcon size={24} className="text-primary" /> اشتراكات الكورسات والتقدم
-                    </h3>
+                    <h3 className="font-bold border-b pb-2 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}><BookIcon size={20} /> اشتراكات الكورسات والتقدم التعليمي</h3>
                     
                     {allCourses.length === 0 ? (
-                      <div className="text-center py-10 bg-gray-50 border border-dashed border-gray-200 rounded-2xl"><p className="font-bold text-gray-500">لا توجد كورسات مسجلة في المنصة.</p></div>
+                      <p className="text-muted text-center py-4">لا توجد كورسات مسجلة في المنصة.</p>
                     ) : (
                       <div className="space-y-4">
                         {allCourses.map(course => {
-                          // 🚀 حماية المصفوفة
-                          const courseProg = studentProgress.courses?.find((c: any) => c.courseId === course.id);
+                          const courseProg = studentProgress.courses.find((c: any) => c.courseId === course.id);
                           const isEnrolled = !!courseProg;
 
                           return (
-                            <div key={course.id} className={`profile-course-card p-5 rounded-2xl border transition-all ${isEnrolled ? 'border-primary/30 bg-blue-50/20 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
-                              <div className="flex justify-between items-center flex-wrap gap-4">
+                            <div key={course.id} className="profile-course-card space-y-3 text-right">
+                              <div className="flex justify-between items-center flex-wrap gap-2">
                                 <div>
-                                  <h4 className="font-black text-lg text-gray-900">{course.title}</h4>
+                                  <h4 className="font-bold text-base text-primary">{course.title}</h4>
                                   {course.academic_year && (
-                                    <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-md mt-1.5 inline-block border border-gray-200">
+                                    <span className="text-xs text-muted px-2 py-0.5 rounded" style={{ background: 'var(--soft-bg, #f1f5f9)' }}>
                                       {course.academic_year}
                                     </span>
                                   )}
@@ -511,60 +473,53 @@ export default function CourseStatsPage() {
                                 <button
                                   onClick={() => handleToggleCourse(course.id)}
                                   disabled={togglingCourseId === course.id}
-                                  className={`btn text-sm font-bold px-5 py-2.5 rounded-xl shadow-sm transition-all ${isEnrolled ? 'btn-outline border-error text-error hover:bg-red-50' : 'btn-primary shadow-blue-200'}`}
+                                  className={`btn text-xs font-bold px-4 py-2 rounded-lg transition-all ${isEnrolled ? 'btn-danger' : 'btn-primary'}`}
                                 >
                                   {togglingCourseId === course.id ? (
-                                    <span className="spinner w-5 h-5 border-2"></span>
+                                    <span className="spinner w-4 h-4 border-2"></span>
                                   ) : isEnrolled ? (
-                                    <span className="flex items-center gap-1.5"><XIcon size={16} /> إلغاء الاشتراك</span>
+                                    <span className="flex items-center gap-1"><XIcon size={14} /> إلغاء الاشتراك</span>
                                   ) : (
-                                    <span className="flex items-center gap-1.5"><CheckIcon size={16} /> تفعيل الكورس للطالب</span>
+                                    <span className="flex items-center gap-1"><CheckIcon size={14} /> تفعيل الاشتراك</span>
                                   )}
                                 </button>
                               </div>
 
                               {/* Enrolled Course Progress Details */}
-                              {isEnrolled && courseProg && (
-                                <div className="mt-5 p-5 rounded-xl bg-white border border-gray-200 shadow-sm">
-                                  <div className="flex justify-between items-center text-xs font-bold flex-wrap gap-3 mb-5 bg-gray-50 p-3.5 rounded-lg border border-gray-100">
-                                    <span className="text-gray-700">المحاضرات المكتملة: <span className="text-primary font-black text-sm bg-white px-2 py-0.5 rounded border border-gray-100">{courseProg.completedLectures} / {courseProg.totalLectures}</span></span>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-gray-700">نسبة الإنجاز:</span>
-                                      <span className={`px-2.5 py-1 rounded-md text-white shadow-sm ${courseProg.totalLectures > 0 && Math.round((courseProg.completedLectures / courseProg.totalLectures) * 100) >= 50 ? 'bg-success' : 'bg-warning'}`}>
-                                        {courseProg.totalLectures > 0 ? Math.round((courseProg.completedLectures / courseProg.totalLectures) * 100) : 0}%
-                                      </span>
-                                    </div>
+                              {isEnrolled && (
+                                <div className="p-3 rounded-lg space-y-3 text-right" style={{ background: 'var(--soft-bg, #f8fafc)', border: '1px solid var(--border, #DCE5EB)' }}>
+                                  <div className="flex justify-between items-center text-xs font-bold flex-wrap gap-2" style={{ color: 'var(--text-secondary)' }}>
+                                    <span>عدد المحاضرات المكتملة: {courseProg.completedLectures} / {courseProg.totalLectures}</span>
+                                    <span>نسبة الإنجاز: {courseProg.totalLectures > 0 ? Math.round((courseProg.completedLectures / courseProg.totalLectures) * 100) : 0}%</span>
                                   </div>
                                   
-                                  <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                                    <table className="w-full text-right text-sm m-0 min-w-[500px]">
-                                      <thead className="bg-gray-50 border-b border-gray-200">
-                                        <tr>
-                                          <th className="py-3 px-4 font-bold text-gray-700">اسم المحاضرة</th>
-                                          <th className="py-3 px-4 font-bold text-gray-700 text-center">حالة الفيديو</th>
-                                          <th className="py-3 px-4 font-bold text-gray-700 text-center">أعلى درجة امتحان</th>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full text-right text-xs">
+                                      <thead>
+                                        <tr className="border-b text-gray-500">
+                                          <th className="pb-2">اسم المحاضرة</th>
+                                          <th className="pb-2 text-center">مشاهدة الفيديو</th>
+                                          <th className="pb-2 text-center">أعلى درجة امتحان</th>
                                         </tr>
                                       </thead>
-                                      <tbody className="divide-y divide-gray-100">
-                                        {courseProg.lectures?.map((lec: any) => (
-                                          <tr key={lec.id} className="hover:bg-gray-50/50 transition-colors">
-                                            <td className="py-3 px-4 font-bold text-gray-900">{lec.title}</td>
-                                            <td className="py-3 px-4 text-center">
+                                      <tbody className="divide-y">
+                                        {courseProg.lectures.map((lec: any) => (
+                                          <tr key={lec.id}>
+                                            <td className="py-2 font-medium">{lec.title}</td>
+                                            <td className="py-2 text-center">
                                               {lec.isCompleted ? (
-                                                <span className="text-success font-bold flex items-center justify-center gap-1.5 bg-green-50 px-3 py-1.5 rounded-lg inline-flex border border-green-100 text-xs shadow-sm"><CheckIcon size={14} /> مكتمل</span>
+                                                <span className="text-success font-bold flex items-center justify-center gap-1"><CheckIcon size={14} /> مكتمل</span>
                                               ) : (
-                                                <span className="text-gray-500 font-bold flex items-center justify-center gap-1.5 text-xs bg-gray-50 px-3 py-1.5 rounded-lg inline-flex border border-gray-200">
-                                                  غير مكتمل ({Math.round(lec.watchTime / 60)} د)
-                                                </span>
+                                                <span className="text-muted flex items-center justify-center gap-1">{Math.round(lec.watchTime / 60)} د</span>
                                               )}
                                             </td>
-                                            <td className="py-3 px-4 text-center">
+                                            <td className="py-2 text-center">
                                               {lec.lastExamScore !== null ? (
-                                                <span className={`font-bold px-3 py-1.5 rounded-lg inline-block text-xs border shadow-sm ${lec.examPassed ? 'text-success bg-green-50 border-green-100' : 'text-error bg-red-50 border-red-100'}`}>
+                                                <span className={`font-bold ${lec.examPassed ? 'text-success' : 'text-error'}`}>
                                                   {lec.lastExamScore}% ({lec.examPassed ? 'ناجح' : 'راسب'})
                                                 </span>
                                               ) : (
-                                                <span className="text-gray-400 font-bold">—</span>
+                                                <span className="text-muted">&mdash;</span>
                                               )}
                                             </td>
                                           </tr>
@@ -588,15 +543,6 @@ export default function CourseStatsPage() {
           </div>
         )}
       </main>
-
-      <style jsx>{`
-        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        .animate-scale-up { animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .animate-slide-in-right { animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes scaleUp { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-        @keyframes slideInRight { from { transform: translateX(100%); } to { transform: translateX(0); } }
-      `}</style>
     </div>
   );
 }

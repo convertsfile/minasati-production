@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '../components/Navbar';
 import { useAuthGuard } from '../hooks/useAuthGuard';
-import api from '@/lib/axios';
+import StatCard from '../components/StatCard';
 import {
   CreditCardIcon,
   PhoneIcon,
@@ -20,8 +20,15 @@ import {
   FileTextIcon,
   ImageIcon,
   UploadIcon,
+  AwardIcon,
   TrendingUpIcon,
 } from '../components/Icons';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+const getToken = () => {
+  return document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] || localStorage.getItem('token');
+};
 
 interface Transaction {
   id: number;
@@ -49,10 +56,8 @@ interface TopupRequest {
 
 interface PaymentNumberData {
   provider: string;
-  payment_number?: string;
-  paymentNumber?: string;
-  number?: string;
-  display_order?: number;
+  payment_number: string;
+  display_order: number;
   instructions: string[];
 }
 
@@ -69,10 +74,9 @@ const PAYMENT_METHODS = [
 ];
 
 export default function WalletPage() {
+  const { isChecking } = useAuthGuard();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const { isChecking, user } = useAuthGuard();
 
   const [activeTab, setActiveTab] = useState<TabKey>('transactions');
 
@@ -90,66 +94,67 @@ export default function WalletPage() {
   const [amount, setAmount] = useState<string>('');
   const [topupLoading, setTopupLoading] = useState(false);
   const [topupError, setTopupError] = useState('');
+  const [topupSuccess, setTopupSuccess] = useState(false);
 
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({ visible: false, message: '', type: 'success' });
-  const showToast = useCallback((message: string, type: 'success' | 'error') => {
+  const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ visible: true, message, type });
     setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 4000);
-  }, []);
+  };
 
   useEffect(() => {
-    if (!isChecking && user?.status === 'pending') {
-      router.replace('/waiting-room');
-    }
-  }, [isChecking, user, router]);
-
-  useEffect(() => {
-    if (!isChecking && user?.status !== 'pending') {
-      fetchWalletData();
-      fetchTopupHistory();
-    }
+    fetchWalletData();
+    fetchTopupHistory();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isChecking, user]);
+  }, []);
 
   const fetchWalletData = async () => {
     try {
-      const [balanceRes, transactionsRes] = await Promise.allSettled([
-        api.get('/wallet/balance'),
-        api.get('/wallet/transactions?limit=10'),
-      ]);
-
-      if (balanceRes.status === 'fulfilled') {
-        setBalance(balanceRes.value.data?.data?.balance ?? balanceRes.value.data?.balance ?? 0);
+      const token = getToken();
+      if (!token) {
+        router.push('/login');
+        return;
       }
 
-      if (transactionsRes.status === 'fulfilled') {
-        const resData = transactionsRes.value.data;
-        
-        // 🚀 استخراج ذكي وآمن للبيانات للوصول لمصفوفة المعاملات أياً كان عمقها
-        let rawTransactions: any[] = [];
-        if (Array.isArray(resData)) {
-          rawTransactions = resData;
-        } else if (Array.isArray(resData?.data)) {
-          rawTransactions = resData.data;
-        } else if (Array.isArray(resData?.data?.data)) {
-          rawTransactions = resData.data.data;
-        } else if (resData?.data?.transactions && Array.isArray(resData.data.transactions)) {
-          rawTransactions = resData.data.transactions;
-        } else if (resData?.transactions && Array.isArray(resData.transactions)) {
-          rawTransactions = resData.transactions;
-        }
+      const [balanceRes, transactionsRes] = await Promise.all([
+        fetch(`${API_URL}/api/wallet/balance`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        }),
+        fetch(`${API_URL}/api/wallet/transactions?limit=10`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        }),
+      ]);
 
+      if (balanceRes.ok) {
+        const balanceData = await balanceRes.json();
+        setBalance(balanceData.data?.balance || 0);
+
+        const statusRes = await fetch(`${API_URL}/api/auth/status`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        });
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          if (statusData.data?.status === 'pending') {
+            router.replace('/waiting-room');
+            return;
+          }
+        }
+      }
+
+      if (transactionsRes.ok) {
+        const transactionsData = await transactionsRes.json();
+        const rawTransactions = transactionsData.data?.data || transactionsData.data || [];
         const mappedTransactions = rawTransactions.map((t: any) => ({
           id: t.id,
-          type: t.type || t.transaction_type || 'top_up',
-          amount: Number(t.amount) || 0,
-          balanceBefore: Number(t.balance_before ?? t.balanceBefore ?? 0),
-          balanceAfter: Number(t.balance_after ?? t.balanceAfter ?? 0),
+          type: t.type,
+          amount: t.amount,
+          balanceBefore: t.balance_before ?? t.balanceBefore ?? 0,
+          balanceAfter: t.balance_after ?? t.balanceAfter ?? 0,
           reference: t.reference || '',
           paymentMethod: t.payment_method ?? t.paymentMethod ?? '',
           description: t.description || '',
-          status: t.status || 'completed',
-          createdAt: t.created_at ?? t.createdAt ?? new Date().toISOString(),
+          status: t.status,
+          createdAt: t.created_at ?? t.createdAt,
         }));
         setTransactions(mappedTransactions);
       }
@@ -162,29 +167,28 @@ export default function WalletPage() {
 
   const fetchTopupHistory = async () => {
     try {
-      const response = await api.get('/wallet/topup/history?limit=10');
-      const resData = response.data;
-      
-      let rawTopups: any[] = [];
-      if (Array.isArray(resData)) {
-        rawTopups = resData;
-      } else if (Array.isArray(resData?.data)) {
-        rawTopups = resData.data;
-      } else if (Array.isArray(resData?.data?.data)) {
-        rawTopups = resData.data.data;
-      }
+      const token = getToken();
+      if (!token) return;
 
-      const mappedTopups = rawTopups.map((req: any) => ({
-        id: req.id,
-        amount: req.amount,
-        verifiedAmount: req.verified_amount ?? req.verifiedAmount ?? null,
-        paymentMethod: req.payment_method ?? req.paymentMethod ?? '',
-        status: req.status,
-        adminNotes: req.admin_notes ?? req.adminNotes ?? null,
-        createdAt: req.created_at ?? req.createdAt,
-        reviewedAt: req.reviewed_at ?? req.reviewedAt ?? null,
-      }));
-      setTopupHistory(mappedTopups);
+      const response = await fetch(`${API_URL}/api/wallet/topup/history?limit=10`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const rawTopups = data.data?.data || data.data || [];
+        const mappedTopups = rawTopups.map((req: any) => ({
+          id: req.id,
+          amount: req.amount,
+          verifiedAmount: req.verified_amount ?? req.verifiedAmount ?? null,
+          paymentMethod: req.payment_method ?? req.paymentMethod ?? '',
+          status: req.status,
+          adminNotes: req.admin_notes ?? req.adminNotes ?? null,
+          createdAt: req.created_at ?? req.createdAt,
+          reviewedAt: req.reviewed_at ?? req.reviewedAt ?? null,
+        }));
+        setTopupHistory(mappedTopups);
+      }
     } catch (err) {
       console.error('Error fetching topup history:', err);
     }
@@ -196,16 +200,25 @@ export default function WalletPage() {
     setTopupError('');
 
     try {
-      const response = await api.post(`/wallet/topup/initiate?provider=${method}`);
-      setPaymentNumberData(response.data?.data || response.data);
-      setTopupStep('show-number');
-    } catch (err: any) {
-      let errorMsg = 'حدث خطأ غير متوقع';
-      if (err?.code === 'ERR_NO_PAYMENT_NUMBER' || err?.response?.data?.code === 'ERR_NO_PAYMENT_NUMBER') {
-        errorMsg = 'عذراً، لا تتوفر أرقام تحويل حالياً لهذه الوسيلة. يرجى تجربة وسيلة أخرى أو التواصل مع الدعم.';
-      } else {
-        errorMsg = err?.message || err?.error || errorMsg;
+      const token = getToken();
+      const response = await fetch(`${API_URL}/api/wallet/topup/initiate?provider=${method}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.code === 'ERR_NO_PAYMENT_NUMBER') {
+          throw new Error('عذراً، لا تتوفر أرقام تحويل حالياً لهذه الوسيلة. يرجى تجربة وسيلة أخرى أو التواصل مع الدعم.');
+        }
+        throw new Error(data.error || data.message || 'فشل في جلب رقم الدفع');
       }
+
+      setPaymentNumberData(data.data);
+      setTopupStep('show-number');
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'حدث خطأ غير متوقع';
       setTopupError(errorMsg);
       showToast(errorMsg, 'error');
     } finally {
@@ -216,10 +229,6 @@ export default function WalletPage() {
   const handleProofSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (!file.type.startsWith('image/')) {
-        showToast('يجب اختيار ملف صورة فقط لإيصال الدفع', 'error');
-        return;
-      }
       setProofImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -231,7 +240,7 @@ export default function WalletPage() {
 
   const submitProof = async () => {
     if (!proofImage || !amount || !selectedMethod) {
-      setTopupError('الرجاء إكمال جميع البيانات وإرفاق الصورة بوضوح');
+      setTopupError('الرجاء إكمال جميع البيانات والصورة');
       return;
     }
 
@@ -239,22 +248,31 @@ export default function WalletPage() {
     setTopupError('');
 
     try {
+      const token = getToken();
       const formData = new FormData();
       formData.append('provider', selectedMethod);
       formData.append('amount', amount);
       formData.append('proof_image', proofImage);
 
-      await api.post('/wallet/topup/submit', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const response = await fetch(`${API_URL}/api/wallet/topup/submit`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       });
 
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'فشل في إرسال إثبات الدفع');
+      }
+
+      setTopupSuccess(true);
       setTopupStep('success');
-      showToast('تم إرسال طلب الشحن بنجاح! جاري المراجعة.', 'success');
-      
+      showToast('تم إرسال طلب الشحن بنجاح!', 'success');
       fetchWalletData();
       fetchTopupHistory();
-    } catch (err: any) {
-      setTopupError(err?.response?.data?.message || err?.message || err?.error || 'فشل في إرسال إثبات الدفع');
+    } catch (err) {
+      setTopupError(err instanceof Error ? err.message : 'حدث خطأ غير معروف');
     } finally {
       setTopupLoading(false);
     }
@@ -268,6 +286,7 @@ export default function WalletPage() {
     setProofPreview(null);
     setAmount('');
     setTopupError('');
+    setTopupSuccess(false);
   };
 
   const getStatusBadgeClass = (status: string) => {
@@ -305,8 +324,7 @@ export default function WalletPage() {
     switch (type) {
       case 'top_up':
       case 'topup': return 'شحن';
-      case 'purchase': return 'شراء (كورس)';
-      case 'comprehensive_exam': return 'شراء (امتحان مستقل)';
+      case 'purchase': return 'شراء';
       case 'refund': return 'استرجاع';
       default: return type;
     }
@@ -332,10 +350,9 @@ export default function WalletPage() {
     return (
       <div className="page-container">
         <Navbar />
-        <div className="page-content flex items-center justify-center min-h-[60vh]">
-          <div className="loading-state text-center">
-            <div className="spinner spinner-lg mb-4 mx-auto" />
-            <p className="font-bold text-gray-500">جاري تحميل بيانات محفظتك...</p>
+        <div className="page-content">
+          <div className="loading-state">
+            <div className="spinner spinner-lg" />
           </div>
         </div>
       </div>
@@ -346,8 +363,8 @@ export default function WalletPage() {
     <div className="page-container relative">
       <Navbar />
 
-      <div className={`toast-container ${toast.visible ? 'show' : ''}`} style={{ position: 'fixed', top: '2rem', left: '50%', transform: 'translateX(-50%)', zIndex: 1000, width: 'max-content', maxWidth: '90vw' }}>
-        <div className={`toast-content ${toast.type === 'success' ? 'toast-success' : 'toast-error'}`}>
+      <div className={`toast-container ${toast.visible ? 'show' : ''}`}>
+        <div className={`toast-content ${toast.type}`}>
           {toast.type === 'success' ? <CheckCircleIcon size={20} /> : <AlertTriangleIcon size={20} />}
           {toast.message}
         </div>
@@ -359,8 +376,9 @@ export default function WalletPage() {
             <h1 className="page-title">محفظتي</h1>
             <p className="page-subtitle">إدارة رصيدك وطلبات الشحن</p>
           </div>
-          <Link href="/student" className="btn btn-outline">
-            <ArrowLeftIcon size={18} /> العودة للوحة
+          <Link href="/dashboard" className="btn btn-outline">
+            <ArrowLeftIcon size={18} />
+            العودة للوحة
           </Link>
         </div>
 
@@ -386,28 +404,34 @@ export default function WalletPage() {
             <div className="card balance-card mb-6">
               <div className="balance-card-bg" />
               <div className="balance-card-content">
-                <p className="balance-label">الرصيد المتاح حالياً</p>
-                <h2 className="balance-value" dir="ltr">
-                  {balance.toLocaleString()} <span className="balance-unit">ج.م</span>
+                <p className="balance-label">الرصيد المتاح</p>
+                <h2 className="balance-value">
+                  {balance.toLocaleString()} <span className="balance-unit">نقطة</span>
                 </h2>
-                <button onClick={() => handleTabChange('topup')} className="btn balance-cta">
-                  <PlusIcon size={18} /> شحن رصيد
+                <button
+                  onClick={() => handleTabChange('topup')}
+                  className="btn balance-cta"
+                >
+                  <PlusIcon size={18} />
+                  شحن رصيد
                 </button>
               </div>
             </div>
 
+
+
             {topupHistory.length > 0 && (
-              <div className="card mb-6 animate-fade-in">
+              <div className="card mb-6">
                 <div className="card-header">
-                  <h3 className="card-title">سجل طلبات الشحن</h3>
+                  <h3 className="card-title">طلبات الشحن</h3>
                 </div>
                 <div className="table-container">
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>المبلغ المضاف</th>
+                        <th>المبلغ</th>
                         <th>الطريقة</th>
-                        <th>حالة الطلب</th>
+                        <th>الحالة</th>
                         <th>التاريخ</th>
                       </tr>
                     </thead>
@@ -415,12 +439,12 @@ export default function WalletPage() {
                       {topupHistory.map(req => (
                         <tr key={req.id}>
                           <td>
-                            <span className="font-bold" dir="ltr">
-                              {req.verifiedAmount || req.amount} ج.م
+                            <span className="font-bold">
+                              {req.verifiedAmount || req.amount} نقطة
                             </span>
                             {req.verifiedAmount && req.verifiedAmount !== req.amount && (
                               <span className="text-muted" style={{ display: 'block', fontSize: '0.75rem' }}>
-                                (المرسل الفعلي: {req.amount})
+                                (المطلوب: {req.amount})
                               </span>
                             )}
                           </td>
@@ -434,8 +458,8 @@ export default function WalletPage() {
                               {getStatusLabel(req.status)}
                             </span>
                           </td>
-                          <td style={{ whiteSpace: 'nowrap' }} dir="ltr">
-                            {new Date(req.createdAt).toLocaleDateString('ar-EG', { dateStyle: 'medium' })}
+                          <td style={{ whiteSpace: 'nowrap' }}>
+                            {new Date(req.createdAt).toLocaleDateString('ar-EG')}
                           </td>
                         </tr>
                       ))}
@@ -445,23 +469,25 @@ export default function WalletPage() {
               </div>
             )}
 
-            <div className="card animate-fade-in">
+            <div className="card">
               <div className="card-header">
-                <h3 className="card-title">سجل المعاملات المالية (Ledger)</h3>
+                <h3 className="card-title">أخر المعاملات</h3>
               </div>
               {transactions.length === 0 ? (
                 <div className="empty-state">
-                  <div className="empty-state-icon"><FileTextIcon size={28} /></div>
-                  <p>لا توجد معاملات مسجلة حتى الآن</p>
+                  <div className="empty-state-icon">
+                    <FileTextIcon size={28} />
+                  </div>
+                  <p>لا توجد معاملات بعد</p>
                 </div>
               ) : (
                 <div className="table-container">
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>النوع والبيان</th>
+                        <th>النوع</th>
                         <th>المبلغ</th>
-                        <th>الرصيد النهائي</th>
+                        <th>الحالة</th>
                         <th>التاريخ</th>
                       </tr>
                     </thead>
@@ -469,28 +495,32 @@ export default function WalletPage() {
                       {transactions.map(transaction => (
                         <tr key={transaction.id}>
                           <td>
-                            <span className="font-bold flex items-center gap-1.5 mb-1">
+                            <span className="font-semibold">
                               {transaction.type === 'top_up' || transaction.type === 'topup' ? (
-                                <TrendingUpIcon size={16} className="text-success" />
-                              ) : transaction.type === 'purchase' || transaction.type === 'comprehensive_exam' ? (
-                                <CreditCardIcon size={16} className="text-primary" />
+                                <TrendingUpIcon size={16} style={{ verticalAlign: 'middle', marginInlineEnd: 4 }} />
+                              ) : transaction.type === 'purchase' ? (
+                                <CreditCardIcon size={16} style={{ verticalAlign: 'middle', marginInlineEnd: 4 }} />
                               ) : (
-                                <ArrowLeftIcon size={16} className="text-warning" />
+                                <ArrowLeftIcon size={16} style={{ verticalAlign: 'middle', marginInlineEnd: 4 }} />
                               )}
                               {getTypeLabel(transaction.type)}
                             </span>
-                            <span className="text-xs text-muted block max-w-[200px] truncate" title={transaction.description}>{transaction.description}</span>
                           </td>
-                          <td dir="ltr">
-                            <span className={`font-black ${['purchase', 'comprehensive_exam', 'withdrawal'].includes(transaction.type) ? 'text-error' : 'text-success'}`}>
-                              {['purchase', 'comprehensive_exam', 'withdrawal'].includes(transaction.type) ? '-' : '+'}{transaction.amount}
+                          <td>
+                            <span className={`font-bold ${transaction.amount > 0 ? 'text-success' : 'text-error'}`}>
+                              {transaction.amount > 0 ? '+' : ''}{transaction.amount} نقطة
                             </span>
                           </td>
                           <td>
-                            <span className="font-bold text-gray-700" dir="ltr">{transaction.balanceAfter} ج.م</span>
+                            <span className={getStatusBadgeClass(transaction.status)}>
+                              {transaction.status === 'completed' && <CheckIcon size={12} />}
+                              {transaction.status === 'pending' && <ClockIcon size={12} />}
+                              {transaction.status === 'failed' && <XIcon size={12} />}
+                              {getStatusLabel(transaction.status)}
+                            </span>
                           </td>
-                          <td style={{ whiteSpace: 'nowrap' }} dir="ltr" className="text-sm">
-                            {new Date(transaction.createdAt).toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' })}
+                          <td style={{ whiteSpace: 'nowrap' }}>
+                            {new Date(transaction.createdAt).toLocaleDateString('ar-EG')}
                           </td>
                         </tr>
                       ))}
@@ -503,22 +533,24 @@ export default function WalletPage() {
         )}
 
         {activeTab === 'topup' && (
-          <div className="card animate-fade-in">
+          <div className="card">
             <div className="card-header">
               <h3 className="card-title">
-                {topupStep === 'select-method' && 'اختر وسيلة الشحن المناسبة'}
-                {topupStep === 'show-number' && 'أرسل المبلغ المطلوب'}
-                {topupStep === 'upload-proof' && 'ارفع إيصال التحويل (Screen)'}
-                {topupStep === 'success' && 'تم استلام طلبك'}
+                {topupStep === 'select-method' && 'اختر طريقة الدفع'}
+                {topupStep === 'show-number' && 'أرسل المبلغ'}
+                {topupStep === 'upload-proof' && 'ارفع الإيصال'}
+                {topupStep === 'success' && 'تم الاستلام'}
               </h3>
               <button onClick={resetTopup} className="btn btn-outline btn-sm">
-                <XIcon size={16} /> إلغاء الشحن
+                <XIcon size={16} />
+                إلغاء
               </button>
             </div>
 
             {topupError && (
-              <div className="banner banner-error mb-6 font-bold flex items-center gap-2">
-                <AlertTriangleIcon size={20} /> {topupError}
+              <div className="banner banner-error mb-6">
+                <AlertTriangleIcon size={20} />
+                {topupError}
               </div>
             )}
 
@@ -543,7 +575,7 @@ export default function WalletPage() {
             </div>
 
             {topupStep === 'select-method' && (
-              <div className="payment-methods-grid animate-fade-in">
+              <div className="payment-methods-grid">
                 {PAYMENT_METHODS.map(method => {
                   const Icon = method.icon;
                   return (
@@ -552,7 +584,9 @@ export default function WalletPage() {
                       onClick={() => initiateTopup(method.id)}
                       className="card payment-method-card"
                     >
-                      <div className="payment-method-icon"><Icon size={40} /></div>
+                      <div className="payment-method-icon">
+                        <Icon size={40} />
+                      </div>
                       <h4 className="payment-method-name">{method.name}</h4>
                       <p className="payment-method-desc">{method.description}</p>
                     </div>
@@ -564,30 +598,40 @@ export default function WalletPage() {
             {topupStep === 'show-number' && paymentNumberData && (
               <div className="animate-fade-in">
                 <div className="payment-number-display">
-                  <p className="payment-number-label">قم بتحويل المبلغ إلى الرقم الآتي:</p>
-                  
-                  <h3 className="payment-number-value select-all">
-                    {paymentNumberData.payment_number || paymentNumberData.paymentNumber || paymentNumberData.number || 'الرقم غير متاح'}
+                  <p className="payment-number-label">أرسل المبلغ إلى:</p>
+                  <h3 className="payment-number-value">
+                    {paymentNumberData.payment_number}
                   </h3>
-
                   <p className="payment-number-provider">
-                    {paymentNumberData.provider === 'instapay' ? <><CreditCardIcon size={16} /> عبر تطبيق إنستاباي</> : <><PhoneIcon size={16} /> عبر محفظة فودافون كاش</>}
+                    {paymentNumberData.provider === 'instapay' ? (
+                      <><CreditCardIcon size={16} /> إنستاباي</>
+                    ) : (
+                      <><PhoneIcon size={16} /> فودافون كاش</>
+                    )}
                   </p>
                 </div>
 
                 <div className="banner banner-warning mb-6">
                   <AlertTriangleIcon size={20} />
                   <div>
-                    <p className="font-bold mb-2">تعليمات هامة قبل التحويل:</p>
+                    <p className="font-bold mb-2">أرسل المبلغ المذكور ثم التقط صورة إيصال التحويل</p>
                     <ul className="instructions-list">
-                      {paymentNumberData.instructions?.map((instruction, i) => <li key={i}>{instruction}</li>)}
+                      {paymentNumberData.instructions.map((instruction, i) => (
+                        <li key={i}>{instruction}</li>
+                      ))}
                     </ul>
                   </div>
                 </div>
 
                 <div className="flex gap-4 flex-wrap">
-                  <button onClick={resetTopup} className="btn btn-outline flex-1"><XIcon size={16} /> إلغاء العملية</button>
-                  <button onClick={() => setTopupStep('upload-proof')} className="btn btn-primary flex-1"><CheckIcon size={16} /> أرسلت المبلغ، المتابعة للإيصال</button>
+                  <button onClick={resetTopup} className="btn btn-outline flex-1">
+                    <XIcon size={16} />
+                    إلغاء
+                  </button>
+                  <button onClick={() => setTopupStep('upload-proof')} className="btn btn-primary flex-1">
+                    <CheckIcon size={16} />
+                    تم التحويل، التالي
+                  </button>
                 </div>
               </div>
             )}
@@ -595,93 +639,273 @@ export default function WalletPage() {
             {topupStep === 'upload-proof' && (
               <div className="animate-fade-in">
                 <div className="form-group mb-6">
-                  <label className="form-label font-bold text-lg">المبلغ الذي قمت بتحويله (بالجنيه المصري)</label>
+                  <label className="form-label">المبلغ المرسل (بالجنيه)</label>
                   <input
                     type="number"
-                    min="1"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="input-field w-full"
-                    placeholder="مثال: 150"
-                    style={{ textAlign: 'center', fontSize: '1.5rem', fontWeight: 900, color: 'var(--primary)' }}
+                    className="input-field"
+                    placeholder="أدخل المبلغ الذي قمت بتحويله"
+                    style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 700 }}
                   />
                 </div>
 
                 <div className="form-group mb-6">
-                  <label className="form-label font-bold text-lg mb-2 block">صورة إيصال التحويل (سكرين شوت من التطبيق)</label>
-                  <input type="file" accept="image/*" onChange={handleProofSelect} ref={fileInputRef} className="hidden" />
-                  <div onClick={() => fileInputRef.current?.click()} className={`file-upload-zone ${proofImage ? 'has-file' : ''}`}>
+                  <label className="form-label">صورة إيصال التحويل</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProofSelect}
+                    ref={fileInputRef}
+                  />
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`file-upload-zone ${proofImage ? 'has-file' : ''}`}
+                  >
                     {proofPreview ? (
-                      <img src={proofPreview} alt="إيصال الدفع" className="upload-preview" />
+                      <img src={proofPreview} alt="إيصال دفع" className="upload-preview" />
                     ) : (
                       <div>
-                        <div className="upload-placeholder-icon text-primary mb-2"><ImageIcon size={48} /></div>
-                        <p className="font-black text-gray-700 text-lg">اضغط هنا لرفع صورة الإيصال</p>
-                        <p className="text-gray-400 font-bold mt-1 text-sm">صيغة الصور المدعومة: PNG, JPG, JPEG</p>
+                        <div className="upload-placeholder-icon">
+                          <ImageIcon size={40} />
+                        </div>
+                        <p className="font-semibold text-secondary">اضغط هنا لرفع الصورة</p>
+                        <p className="text-muted mt-2" style={{ fontSize: '0.875rem' }}>PNG, JPG أو JPEG</p>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="flex gap-4 flex-wrap mt-8">
-                  <button onClick={() => setTopupStep('show-number')} className="btn btn-outline flex-1"><ArrowLeftIcon size={16} /> رجوع للرقم</button>
-                  <button onClick={submitProof} disabled={topupLoading || !proofImage || !amount} className="btn btn-primary flex-1 py-3 font-bold text-lg shadow-md shadow-blue-200">
-                    {topupLoading ? <><span className="spinner spinner-white border-2 w-5 h-5" /> جاري الرفع...</> : <><UploadIcon size={18} /> تأكيد إرسال الطلب للإدارة</>}
+                <div className="flex gap-4 flex-wrap">
+                  <button onClick={() => setTopupStep('show-number')} className="btn btn-outline flex-1">
+                    <ArrowLeftIcon size={16} />
+                    رجوع
+                  </button>
+                  <button
+                    onClick={submitProof}
+                    disabled={topupLoading || !proofImage || !amount}
+                    className="btn btn-primary flex-1"
+                  >
+                    {topupLoading ? (
+                      <>
+                        <span className="spinner spinner-white" />
+                        جاري الإرسال...
+                      </>
+                    ) : (
+                      <>
+                        <UploadIcon size={16} />
+                        إرسال للمراجعة
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
             )}
 
             {topupStep === 'success' && (
-              <div className="animate-fade-in text-center py-8">
-                <div className="success-circle shadow-lg shadow-green-200">
-                  <CheckCircleIcon size={48} style={{ color: 'white' }} />
+              <div className="animate-fade-in text-center" style={{ padding: '2rem' }}>
+                <div className="success-circle">
+                  <CheckCircleIcon size={40} style={{ color: 'white' }} />
                 </div>
-                <h3 className="success-title text-success">تم استقبال طلبك بنجاح!</h3>
-                <p className="text-gray-500 font-bold mb-8 leading-relaxed max-w-md mx-auto">
-                  تقوم الإدارة حالياً بمراجعة إيصال التحويل الخاص بك والتأكد من البنك.
-                  سيتم إضافة الرصيد إلى محفظتك تلقائياً فور التأكيد.
+                <h3 className="success-title">تم إرسال طلبك بنجاح!</h3>
+                <p className="text-secondary mb-6" style={{ lineHeight: 1.8 }}>
+                  سيتم مراجعة إيصال الدفع من قبل الإدارة.<br />
+                  سيضاف الرصيد إلى محفظتك فور التأكد من التحويل.
                 </p>
-                <button onClick={() => handleTabChange('transactions')} className="btn btn-primary px-8 font-bold mx-auto">
-                  العودة لسجل المحفظة
+                <button onClick={() => handleTabChange('transactions')} className="btn btn-primary">
+                  <ArrowLeftIcon size={16} />
+                  العودة للمحفظة
                 </button>
               </div>
             )}
           </div>
         )}
+
+
       </div>
 
       <style jsx>{`
-        .wallet-tabs { display: flex; gap: 0.5rem; background: var(--surface); border-radius: var(--radius-md); padding: 0.375rem; border: 1px solid var(--border); }
-        .wallet-tab { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem 1rem; border: none; background: transparent; color: var(--text-secondary); font-family: var(--font-body); font-size: 0.9375rem; font-weight: 600; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.3s ease; }
-        .wallet-tab:hover { color: var(--primary); background: rgba(11, 79, 108, 0.04); }
-        .wallet-tab.active { background: var(--gradient-primary); color: white; box-shadow: var(--shadow-sm); }
-        .balance-card { background: var(--gradient-primary); border: none; position: relative; overflow: hidden; padding: var(--space-xl); border-radius: 1.5rem; box-shadow: 0 10px 25px -5px rgba(11, 79, 108, 0.3); }
-        .balance-card-bg { position: absolute; inset: 0; background: radial-gradient(circle at 20% 80%, rgba(255,255,255,0.15) 0%, transparent 50%); pointer-events: none; }
-        .balance-card-content { position: relative; z-index: 1; }
-        .balance-label { color: rgba(255,255,255,0.8); font-size: 1.1rem; font-weight: 700; margin-bottom: 0.5rem; }
-        .balance-value { color: white; font-family: var(--font-display); font-size: 3.5rem; font-weight: 900; margin-bottom: 1.5rem; }
-        .balance-unit { font-size: 1.25rem; font-weight: 700; opacity: 0.9; }
-        .balance-cta { background: white; color: var(--primary); border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-weight: 800; padding: 0.75rem 1.5rem; }
-        .balance-cta:hover { background: var(--surface); color: var(--primary-dark); box-shadow: 0 6px 16px rgba(0,0,0,0.2); transform: translateY(-2px); }
-        .payment-methods-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }
-        .payment-method-card { cursor: pointer; text-align: center; padding: 2.5rem 1.5rem; border: 2px solid transparent; background: var(--surface); box-shadow: var(--shadow-sm); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 1rem; }
-        .payment-method-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-lg); border-color: var(--primary); background: linear-gradient(135deg, rgba(11, 79, 108, 0.04) 0%, var(--surface) 100%); }
-        .payment-method-icon { color: var(--primary); margin-bottom: 1rem; display: flex; align-items: center; justify-content: center; }
-        .payment-method-name { font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--text-primary); }
-        .payment-method-desc { color: var(--text-secondary); font-size: 0.875rem; font-weight: 600; }
-        .payment-number-display { background: var(--gradient-accent); border-radius: 1rem; padding: 2.5rem; text-align: center; margin-bottom: 1.5rem; box-shadow: 0 10px 25px -5px rgba(27, 189, 212, 0.3); }
-        .payment-number-label { color: rgba(255,255,255,0.9); font-size: 1.1rem; font-weight: 700; }
-        .payment-number-value { color: white; font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3rem); font-weight: 900; letter-spacing: 0.1em; margin: 1rem 0; direction: ltr; }
-        .payment-number-provider { color: rgba(255,255,255,0.9); font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-weight: bold; }
-        .instructions-list { font-size: 0.95rem; padding-inline-start: 1.5rem; line-height: 1.8; list-style: disc; color: var(--text-secondary); }
-        .file-upload-zone { border: 2px dashed var(--border); border-radius: 1rem; padding: 3rem 1rem; text-align: center; cursor: pointer; transition: all 0.3s ease; background: var(--surface); }
-        .file-upload-zone:hover { border-color: var(--primary); background: rgba(11, 79, 108, 0.02); }
-        .file-upload-zone.has-file { border-style: solid; border-color: var(--success); background: rgba(16, 185, 129, 0.02); padding: 1rem; }
-        .upload-preview { max-height: 300px; object-fit: contain; margin: 0 auto; border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
-        .upload-placeholder-icon { display: flex; align-items: center; justify-content: center; }
-        .success-circle { width: 100px; height: 100px; border-radius: 50%; background: var(--success); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
-        .success-title { font-family: var(--font-display); font-size: 2rem; font-weight: 900; margin-bottom: 1rem; }
+        .wallet-tabs {
+          display: flex;
+          gap: 0.5rem;
+          background: var(--surface);
+          border-radius: var(--radius-md);
+          padding: 0.375rem;
+          border: 1px solid var(--border);
+        }
+        .wallet-tab {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+          padding: 0.75rem 1rem;
+          border: none;
+          background: transparent;
+          color: var(--text-secondary);
+          font-family: var(--font-body);
+          font-size: 0.9375rem;
+          font-weight: 600;
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .wallet-tab:hover {
+          color: var(--primary);
+          background: rgba(11, 79, 108, 0.04);
+        }
+        .wallet-tab.active {
+          background: var(--gradient-primary);
+          color: white;
+          box-shadow: var(--shadow-sm);
+        }
+        .balance-card {
+          background: var(--gradient-primary);
+          border: none;
+          position: relative;
+          overflow: hidden;
+          padding: var(--space-xl);
+        }
+        .balance-card-bg {
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(circle at 20% 80%, rgba(255,255,255,0.15) 0%, transparent 50%);
+          pointer-events: none;
+        }
+        .balance-card-content {
+          position: relative;
+          z-index: 1;
+        }
+        .balance-label {
+          color: rgba(255,255,255,0.8);
+          font-size: 1rem;
+          font-weight: 600;
+          margin-bottom: 0.5rem;
+        }
+        .balance-value {
+          color: white;
+          font-family: var(--font-display);
+          font-size: 3rem;
+          font-weight: 800;
+          margin-bottom: 1.5rem;
+        }
+        .balance-unit {
+          font-size: 1.25rem;
+          font-weight: 600;
+        }
+        .balance-cta {
+          background: white;
+          color: var(--primary);
+          border: none;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          font-weight: 700;
+        }
+        .balance-cta:hover {
+          background: white;
+          color: var(--primary-dark);
+          box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+          transform: translateY(-2px);
+        }
+        .payment-methods-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 1rem;
+          margin-bottom: 1.5rem;
+        }
+        .payment-method-card {
+          cursor: pointer;
+          text-align: center;
+          padding: 2rem 1.5rem;
+          border: 2px solid var(--primary);
+          background: linear-gradient(135deg, rgba(11, 79, 108, 0.04) 0%, var(--surface) 100%);
+          transition: all 0.3s ease;
+        }
+        .payment-method-card:hover {
+          transform: translateY(-5px);
+          box-shadow: var(--shadow-lg);
+        }
+        .payment-method-icon {
+          color: var(--primary);
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .payment-method-name {
+          font-family: var(--font-display);
+          font-size: 1.25rem;
+          font-weight: 700;
+          margin-bottom: 0.5rem;
+        }
+        .payment-method-desc {
+          color: var(--text-secondary);
+          font-size: 0.875rem;
+        }
+        .payment-number-display {
+          background: var(--gradient-accent);
+          border-radius: var(--radius-lg);
+          padding: 2.5rem;
+          text-align: center;
+          margin-bottom: 1.5rem;
+        }
+        .payment-number-label {
+          color: rgba(255,255,255,0.8);
+          font-size: 1rem;
+          font-weight: 600;
+        }
+        .payment-number-value {
+          color: white;
+          font-family: var(--font-display);
+          font-size: clamp(1.5rem, 5vw, 2.5rem);
+          font-weight: 800;
+          letter-spacing: 0.1em;
+          margin: 1rem 0;
+          direction: ltr;
+        }
+        .payment-number-provider {
+          color: rgba(255,255,255,0.8);
+          font-size: 0.875rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+        }
+        .instructions-list {
+          font-size: 0.875rem;
+          padding-inline-start: 1.25rem;
+          line-height: 1.8;
+          list-style: disc;
+        }
+        .upload-preview {
+          max-height: 250px;
+          object-fit: contain;
+          margin: 0 auto;
+          border-radius: var(--radius-sm);
+        }
+        .upload-placeholder-icon {
+          color: var(--text-muted);
+          margin-bottom: 1rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .success-circle {
+          width: 100px;
+          height: 100px;
+          border-radius: 50%;
+          background: var(--success);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 1.5rem;
+        }
+        .success-title {
+          font-family: var(--font-display);
+          font-size: 1.75rem;
+          font-weight: 800;
+          color: var(--success);
+          margin-bottom: 1rem;
+        }
       `}</style>
     </div>
   );

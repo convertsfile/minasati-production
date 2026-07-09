@@ -27,12 +27,20 @@ api.interceptors.request.use(
 );
 
 // 🚀 3. معترض الاستجابات (Response Interceptor) - الدرع الأمني وفك التغليف
+//
+// The interceptor unwraps the ApiResponse<T> envelope so callers receive
+// the inner T directly (e.g. `const { token, user } = await api.post(...)`).
+// We achieve this by typing the response interceptor's return as
+// `AxiosResponse<ApiResponse<T>>` → `T` and the error path as
+// `AxiosError<ApiError>` → `ApiError`. The narrowed types flow through to
+// the post/get/... call signatures so `api.post<VerifyOtpResponse>(...)`
+// returns `Promise<VerifyOtpResponse>`.
 api.interceptors.response.use(
-  (response: AxiosResponse<ApiResponse>) => {
+  <T>(response: AxiosResponse<ApiResponse<T>>): T => {
     // نرجع البيانات مباشرة لكي لا نضطر لكتابة response.data.data في كل صفحة
-    return response.data as any; 
+    return response.data.data as T;
   },
-  (error: AxiosError<ApiError>) => {
+  (error: AxiosError<ApiError>): Promise<ApiError> => {
     const status = error.response?.status;
 
     console.error(`🚨 [Axios Error] Status: ${status} | URL: ${error.config?.url} | Message:`, error.response?.data?.message || error.message);
@@ -53,7 +61,7 @@ api.interceptors.response.use(
         Cookies.remove('token');
         if (typeof window !== 'undefined') {
           // توجيه الطالب لصفحة "تم الحظر" التي أراها في صورتك (app/blocked)
-          window.location.href = '/blocked'; 
+          window.location.href = '/blocked';
         }
       } else if (errorCode === 'ERR_USER_NOT_ACTIVE') {
         // Cookies.remove('token');
@@ -70,7 +78,7 @@ api.interceptors.response.use(
         console.warn('Stream Conflict Detected!');
     }
 
-    return Promise.reject(error.response?.data || error.message);
+    return Promise.reject(error.response?.data || { success: false, message: error.message, code: 'ERR_UNKNOWN' });
   }
 );
 

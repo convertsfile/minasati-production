@@ -90,17 +90,19 @@ class HomeworkController extends Controller
             ->first();
 
         // 🚀 تحويل المفاتيح السحابية إلى روابط ديناميكية صالحة
+        // SEC-MAJOR-02: signed URLs (5-minute lifetime) issued only after
+        // the Gate::authorize('view', $lecture) check above has confirmed
+        // the requesting student is enrolled and not blocked.
         return ApiResponse::success([
             'homework' => [
                 'id' => $homework->id,
                 'title' => $homework->title,
-                // جلب الرابط من B2
-                'fileUrl' => $this->b2Service->getUrl($homework->file_path),
+                'fileUrl' => $this->b2Service->getSignedUrl($homework->file_path, 300),
             ],
             'submission' => $submission ? [
                 'id' => $submission->id,
                 'status' => $submission->status,
-                'fileUrl' => $this->b2Service->getUrl($submission->file_path),
+                'fileUrl' => $this->b2Service->getSignedUrl($submission->file_path, 300),
                 'rejectionReason' => $submission->rejection_reason,
                 'score' => $submission->score,
                 'submittedAt' => $submission->created_at->format('Y-m-d H:i:s'),

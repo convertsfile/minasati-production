@@ -3,12 +3,14 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Cookies from "js-cookie"; // 🚀 مكتبة التعامل الآمن مع الكوكيز
 import Navbar from '../components/Navbar';
 import { LockIcon, BookIcon } from '../components/Icons';
-import api from "@/lib/axios"; // 🚀 العميل المركزي
-import { useAuthStore } from "@/store/useAuthStore"; // 🚀 الذاكرة المركزية
-import { useSearchParams } from "next/navigation";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+const getToken = () => {
+  return document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] || localStorage.getItem('token');
+};
 
 const EyeIcon = ({ size = 20 }: { size?: number }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -28,99 +30,97 @@ const EyeOffIcon = ({ size = 20 }: { size?: number }) => (
 
 export default function LoginPage() {
   const router = useRouter();
-  
-  // 🚀 استدعاء الحالة المركزية لمنع الطالب المسجل من رؤية صفحة الدخول
-  const { isAuthenticated, isLoading: authLoading, fetchUser } = useAuthStore();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get('redirect');
 
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({ visible: false, message: '', type: 'success' });
-  
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ visible: true, message, type });
     setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 4000);
   };
+
+  useEffect(() => {
+    const token = getToken();
+    if (token) {
+      router.push("/dashboard");
+    }
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-        let deviceId = localStorage.getItem("device_id");
-        if (!deviceId) {
-            deviceId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
-            localStorage.setItem("device_id", deviceId);
+      let deviceId = localStorage.getItem("device_id");
+      if (!deviceId) {
+        deviceId = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2);
+        localStorage.setItem("device_id", deviceId);
+      }
+
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify({ email, password, device_id: deviceId }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.code === 'ERR_ACCOUNT_PENDING') {
+          router.push("/waiting-room");
+          return;
         }
-
-        const response: any = await api.post("/auth/login", { 
-          email, 
-          password, 
-          device_id: deviceId
-        });
-
-        // 1. استخراج التوكن بشكل آمن تماماً أياً كانت طريقة تغليف الاستجابة من Laravel
-        // const payload = response.data || response;
-        const token = response.data?.token;
-        const user = response.data?.user;
-
-        if (token) {
-            // 2. السر هنا: إزالة secure مؤقتاً وتحديد المسار (path) لإجبار المتصفح على الحفظ
-            Cookies.set('token', token, {
-              expires: 30, 
-              path: '/',
-              secure: process.env.NODE_ENV === 'production', // يعمل Secure في الإنتاج فقط
-              sameSite: 'lax' 
-            });
-            
-            await fetchUser();
-            showToast("تم تسجيل الدخول بنجاح! جاري التوجيه...", "success");
-            
-            setTimeout(() => {
-              const status = user?.status;
-              const isAdmin = user?.role === 'admin';
-              
-              if (isAdmin) {
-                  router.push("/admin");
-                } else if (status === 'pending') {
-                  router.push("/waiting-room");
-                } else if (status === 'rejected') {
-                  if (user?.rejection_reason) {
-                    localStorage.setItem('rejection_reason', user.rejection_reason);
-                  }
-                  router.push("/resubmit");
-                } else {
-                  router.push(redirectUrl ? redirectUrl : "/dashboard");
-                }
-            }, 500);
+        if (data.code === 'ERR_ACCOUNT_REJECTED') {
+          router.push("/resubmit");
+          return;
         }
-
-    } catch (err: any) {
-        const errorCode = err?.code;
-        const errorMessage = err?.message || "فشل تسجيل الدخول. تأكد من صحة البريد أو كلمة المرور.";
-
-        if (errorCode === 'ERR_ACCOUNT_PENDING') {
-            router.push("/waiting-room");
-        } else if (errorCode === 'ERR_ACCOUNT_REJECTED') {
-            if (err?.data?.rejection_reason) {
-                localStorage.setItem('rejection_reason', err.data.rejection_reason);
-            }
-            router.push("/resubmit");
-        } else {
-            showToast(errorMessage, "error");
+        if (data.error === 'account_blocked' || data.error === 'limit_reached') {
+          throw new Error(data.message || data.error);
         }
+        throw new Error(data.message || data.error || "فشل تسجيل الدخول. تأكد من صحة البريد أو كلمة المرور.");
+      }
+
+      if (data.data?.token) {
+        const token = data.data.token;
+        localStorage.setItem("token", token);
+        
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + 30);
+        document.cookie = `token=${token}; path=/; expires=${expiryDate.toUTCString()}; SameSite=Lax`;
+        
+        showToast("تم تسجيل الدخول بنجاح! جاري التوجيه...", "success");
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      const user = data.data?.user;
+      const status = user?.status;
+      const isAdmin = user?.isAdmin || user?.is_admin;
+      
+      if (isAdmin) {
+        router.push("/admin");
+      } else if (status === 'pending') {
+        router.push("/waiting-room");
+      } else if (status === 'rejected') {
+        if(user?.rejectionReason) {
+          localStorage.setItem('rejection_reason', user.rejectionReason);
+        }
+        router.push("/resubmit");
+      } else {
+        router.push("/dashboard"); 
+      }
+
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "فشل تسجيل الدخول. يرجى المحاولة مرة أخرى.";
+      showToast(message, "error");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
-
-  if (authLoading || isAuthenticated) {
-    return <div className="min-h-screen bg-[var(--background)] flex items-center justify-center"><div className="spinner spinner-lg"></div></div>;
-  }
 
   return (
     <>
@@ -216,7 +216,6 @@ export default function LoginPage() {
         </div>
 
         <style jsx>{`
-          /* كافة أكواد الـ CSS الخاصة بك محفوظة كما هي لضمان عدم كسر التصميم */
           .icon-circle {
             width: 64px;
             height: 64px;

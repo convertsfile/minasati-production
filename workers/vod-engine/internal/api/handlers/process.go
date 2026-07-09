@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/a_ashraf_tech/vod-engine/internal/auth"
 	"github.com/a_ashraf_tech/vod-engine/internal/b2"
 	"github.com/a_ashraf_tech/vod-engine/internal/queue"
 	"github.com/a_ashraf_tech/vod-engine/internal/worker"
@@ -44,11 +45,11 @@ func isDigitsOnly(s string) bool {
 // HandleProcessVideo handles POST /api/v1/video/process
 // Validates the request, creates sub-jobs, enqueues them, and returns immediately.
 func (h *UploadHandler) HandleProcessVideo(w http.ResponseWriter, r *http.Request) {
-	// 1. Validate internal secret
-	internalSecret := r.Header.Get("X-Internal-Secret")
-	if internalSecret != h.JWTSecret {
-		slog.Warn("Unauthorized process trigger attempt", "ip", r.RemoteAddr)
-		http.Error(w, `{"error": "Unauthorized"}`, http.StatusForbidden)
+	// 1. JWT-based auth (HS256, iss=laravel, aud=vod-engine, kid=v1, 60s iat window)
+	bearer := auth.ExtractBearerToken(r.Header.Get("Authorization"))
+	if _, err := auth.VerifyInternalToken(bearer, h.JWTSecret, "video.process"); err != nil {
+		slog.Warn("Unauthorized process trigger attempt", "ip", r.RemoteAddr, "err", err)
+		http.Error(w, `{"error": "Unauthorized: `+err.Error()+`"}`, http.StatusForbidden)
 		return
 	}
 
@@ -123,10 +124,10 @@ func (h *UploadHandler) HandleProcessVideo(w http.ResponseWriter, r *http.Reques
 
 // HandleDeleteVideo handles DELETE /api/v1/video/{lecture_id}
 func (h *UploadHandler) HandleDeleteVideo(w http.ResponseWriter, r *http.Request) {
-	internalSecret := r.Header.Get("X-Internal-Secret")
-	if internalSecret != h.JWTSecret {
-		slog.Warn("Unauthorized delete attempt", "ip", r.RemoteAddr)
-		http.Error(w, `{"error": "Unauthorized"}`, http.StatusForbidden)
+	bearer := auth.ExtractBearerToken(r.Header.Get("Authorization"))
+	if _, err := auth.VerifyInternalToken(bearer, h.JWTSecret, "video.delete"); err != nil {
+		slog.Warn("Unauthorized delete attempt", "ip", r.RemoteAddr, "err", err)
+		http.Error(w, `{"error": "Unauthorized: `+err.Error()+`"}`, http.StatusForbidden)
 		return
 	}
 
@@ -169,10 +170,10 @@ func (h *UploadHandler) HandleDeleteVideo(w http.ResponseWriter, r *http.Request
 
 // HandleRequeueVideo handles POST /api/v1/video/requeue
 func (h *UploadHandler) HandleRequeueVideo(w http.ResponseWriter, r *http.Request) {
-	internalSecret := r.Header.Get("X-Internal-Secret")
-	if internalSecret != h.JWTSecret {
-		slog.Warn("Unauthorized requeue attempt", "ip", r.RemoteAddr)
-		http.Error(w, `{"error": "Unauthorized"}`, http.StatusForbidden)
+	bearer := auth.ExtractBearerToken(r.Header.Get("Authorization"))
+	if _, err := auth.VerifyInternalToken(bearer, h.JWTSecret, "video.requeue"); err != nil {
+		slog.Warn("Unauthorized requeue attempt", "ip", r.RemoteAddr, "err", err)
+		http.Error(w, `{"error": "Unauthorized: `+err.Error()+`"}`, http.StatusForbidden)
 		return
 	}
 

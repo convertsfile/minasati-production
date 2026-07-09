@@ -80,12 +80,15 @@ class WalletTopupController extends Controller
             return ApiResponse::error('فشل في رفع صورة الإثبات. يرجى المحاولة مرة أخرى.', 'ERR_UPLOAD_FAILED', 500);
         }
 
+        // SEC-MAJOR-02: store the storage KEY in proof_image_url, not a
+        // signed URL. The historical column name is kept for backwards
+        // compatibility; the admin formatter re-signs on every read.
         $topupRequest = WalletTopupRequest::create([
             'user_id' => $user->id,
             'payment_number_id' => $paymentNumber->id,
             'amount' => $amount,
             'payment_method' => $provider,
-            'proof_image_url' => $uploadResult['url'],
+            'proof_image_url' => $uploadResult['public_id'],
             'status' => 'pending',
         ]);
 

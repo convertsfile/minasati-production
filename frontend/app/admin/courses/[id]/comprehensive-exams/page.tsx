@@ -30,6 +30,10 @@ interface ComprehensiveExam {
   status: 'upcoming' | 'active' | 'ended';
   accessibility: 'enrolled_only' | 'everyone';
   pricePoints: number;
+  /** Form/variant number (1-based). Multiple forms per exam are used to randomise
+   * the question order delivered to different students. Optional in API responses
+   * for backward compatibility with the original single-form endpoint. */
+  form_index?: number;
 }
 
 interface Question {
@@ -59,10 +63,10 @@ export default function AdminComprehensiveExamsPage() {
   const [currentView, setCurrentView] = useState<'list' | 'settings' | 'questions'>('list');
   const [selectedExam, setSelectedExam] = useState<ComprehensiveExam | null>(null);
   
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({ visible: false, message: '', type: 'success' });
+  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' | 'info' }>({ visible: false, message: '', type: 'success' });
   const [confirmDialog, setConfirmDialog] = useState<{ visible: boolean; message: string; onConfirm: () => void } | null>(null);
 
-  const showToast = useCallback((message: string, type: 'success' | 'error') => {
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info') => {
     setToast({ visible: true, message, type });
     setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 4000);
   }, []);

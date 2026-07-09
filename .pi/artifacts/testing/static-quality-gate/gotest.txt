@@ -1,0 +1,281 @@
+ok  	github.com/a_ashraf_tech/vod-engine/internal/api/handlers	2.977s
+?   	github.com/a_ashraf_tech/vod-engine/internal/api/middlewares	[no test files]
+?   	github.com/a_ashraf_tech/vod-engine/internal/auth	[no test files]
+?   	github.com/a_ashraf_tech/vod-engine/internal/b2	[no test files]
+ok  	github.com/a_ashraf_tech/vod-engine/internal/circuitbreaker	(cached)
+ok  	github.com/a_ashraf_tech/vod-engine/internal/config	(cached)
+2026/07/09 06:57:38 WARN Failed to set FFmpeg OOM score (non-fatal, LINUX-01) pid=23480 error="open /proc/23480/oom_score_adj: The system cannot find the path specified."
+2026/07/09 06:57:38 INFO watchdog.started component=watchdog job_id=test-crash-log lecture_id=crash-test pid=23480
+ffmpeg version N-123074-g4e32fb4c2a-20260228 Copyright (c) 2000-2026 the FFmpeg developers
+  built with gcc 15.2.0 (crosstool-NG 1.28.0.1_403899e)
+  configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-opencl --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --enable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20260228
+  libavutil      60. 25.100 / 60. 25.100
+  libavcodec     62. 23.103 / 62. 23.103
+  libavformat    62. 10.101 / 62. 10.101
+  libavdevice    62.  2.100 / 62.  2.100
+  libavfilter    11. 12.100 / 11. 12.100
+  libswscale      9.  4.100 /  9.  4.100
+  libswresample   6.  2.100 /  6.  2.100
+[in#0 @ 00000251bf475980] moov atom not found
+[in#0 @ 00000251bf4f7600] Error opening input: Invalid data found when processing input
+Error opening input file C:\Users\drhab\AppData\Local\Temp\TestRunFFmpeg_CrashLogWritten3813403702\002\input.mp4.
+Error opening input files: Invalid data found when processing input
+2026/07/09 06:58:08 WARN watchdog.stall_detected component=watchdog job_id=test-crash-log lecture_id=crash-test stall_count=1 elapsed_s=30.0019012 threshold=0
+2026/07/09 06:58:08 WARN watchdog.kill component=watchdog job_id=test-crash-log lecture_id=crash-test pid=23480 reason=no_progress stall_count=1
+2026/07/09 06:58:23 ERROR pipeline.ffmpeg_error component=pipeline job_id=test-crash-log lecture_id=crash-test exit_code=3199971767 stderr="ffmpeg version N-123074-g4e32fb4c2a-20260228 Copyright (c) 2000-2026 the FFmpeg developers\r\n  built with gcc 15.2.0 (crosstool-NG 1.28.0.1_403899e)\r\n  configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-opencl --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --enable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20260228\r\n  libavutil      60. 25.100 / 60. 25.100\r\n  libavcodec     62. 23.103 / 62. 23.103\r\n  libavformat    62. 10.101 / 62. 10.101\r\n  libavdevice    62.  2.100 / 62.  2.100\r\n  libavfilter    11. 12.100 / 11. 12.100\r\n  libswscale      9.  4.100 /  9.  4.100\r\n  libswresample   6.  2.100 /  6.  2.100\r\n[in#0 @ 00000251bf475980] moov atom not found\r\n[in#0 @ 00000251bf4f7600] Error opening input: Invalid data found when processing input\r\nError opening input file C:\\Users\\drhab\\AppData\\Local\\Temp\\TestRunFFmpeg_CrashLogWritten3813403702\\002\\input.mp4.\r\nError opening input files: Invalid data found when processing input\r\n" error="exit status 0xbebbb1b7" exit_reason=watchdog_kill:no_progress
+2026/07/09 06:58:23 WARN Failed to set FFmpeg OOM score (non-fatal, LINUX-01) pid=7860 error="open /proc/7860/oom_score_adj: The system cannot find the path specified."
+2026/07/09 06:58:23 INFO watchdog.started component=watchdog job_id=test-truncation lecture_id=trunc-test pid=7860
+ffmpeg version N-123074-g4e32fb4c2a-20260228 Copyright (c) 2000-2026 the FFmpeg developers
+  built with gcc 15.2.0 (crosstool-NG 1.28.0.1_403899e)
+  configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-opencl --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --enable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20260228
+  libavutil      60. 25.100 / 60. 25.100
+  libavcodec     62. 23.103 / 62. 23.103
+  libavformat    62. 10.101 / 62. 10.101
+  libavdevice    62.  2.100 / 62.  2.100
+  libavfilter    11. 12.100 / 11. 12.100
+  libswscale      9.  4.100 /  9.  4.100
+  libswresample   6.  2.100 /  6.  2.100
+2026/07/09 06:58:53 WARN watchdog.stall_detected component=watchdog job_id=test-truncation lecture_id=trunc-test stall_count=1 elapsed_s=30.0035606 threshold=0
+2026/07/09 06:58:53 WARN watchdog.kill component=watchdog job_id=test-truncation lecture_id=trunc-test pid=7860 reason=no_progress stall_count=1
+2026/07/09 06:59:08 ERROR pipeline.ffmpeg_error component=pipeline job_id=test-truncation lecture_id=trunc-test exit_code=3199971767 stderr="ffmpeg version N-123074-g4e32fb4c2a-20260228 Copyright (c) 2000-2026 the FFmpeg developers\r\n  built ..." error="exit status 0xbebbb1b7" exit_reason=watchdog_kill:no_progress
+2026/07/09 06:59:11 WARN Failed to set FFmpeg OOM score (non-fatal, LINUX-01) pid=13400 error="open /proc/13400/oom_score_adj: The system cannot find the path specified."
+2026/07/09 06:59:11 INFO watchdog.started component=watchdog job_id=upload-test-job-1 lecture_id=upload-test pid=13400
+ffmpeg version N-123074-g4e32fb4c2a-20260228 Copyright (c) 2000-2026 the FFmpeg developers
+  built with gcc 15.2.0 (crosstool-NG 1.28.0.1_403899e)
+  configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-opencl --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --enable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20260228
+  libavutil      60. 25.100 / 60. 25.100
+  libavcodec     62. 23.103 / 62. 23.103
+  libavformat    62. 10.101 / 62. 10.101
+  libavdevice    62.  2.100 / 62.  2.100
+  libavfilter    11. 12.100 / 11. 12.100
+  libswscale      9.  4.100 /  9.  4.100
+  libswresample   6.  2.100 /  6.  2.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\drhab\AppData\Local\Temp\TestUploadFlow_EncodingThenFileList499581482\001\input.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf62.10.101
+  Duration: 00:00:03.00, start: 0.000000, bitrate: 130 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Constrained Baseline) (avc1 / 0x31637661), yuv420p(progressive), 854x480 [SAR 1:1 DAR 427:240], 126 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      encoder         : Lavc62.23.103 libx264
+Stream mapping:
+  Stream #0:0 (h264) -> scale:default
+  scale:default -> Stream #0:0 (libx264)
+Press [q] to stop, [?] for help
+[libx264 @ 00000124e0b76fc0] using SAR=1/1
+[libx264 @ 00000124e0b76fc0] using cpu capabilities: MMX2 SSE2Fast SSSE3 SSE4.2 AVX FMA3 BMI2 AVX2
+[libx264 @ 00000124e0b76fc0] profile Constrained Baseline, level 3.1, 4:2:0, 8-bit
+[libx264 @ 00000124e0b76fc0] 264 - core 165 - H.264/MPEG-4 AVC codec - Copyleft 2003-2025 - http://www.videolan.org/x264.html - options: cabac=0 ref=1 deblock=0:0:0 analyse=0:0 me=dia subme=0 psy=1 psy_rd=1.00:0.00 mixed_ref=0 me_range=16 chroma_me=1 trellis=0 8x8dct=0 cqm=0 deadzone=21,11 fast_pskip=1 chroma_qp_offset=0 threads=1 lookahead_threads=1 sliced_threads=0 nr=0 decimate=1 interlaced=0 bluray_compat=0 constrained_intra=0 bframes=0 weightp=0 keyint=48 keyint_min=25 scenecut=0 intra_refresh=0 rc_lookahead=0 rc=abr mbtree=0 bitrate=1000 ratetol=1.0 qcomp=0.60 qpmin=0 qpmax=69 qpstep=4 vbv_maxrate=1200 vbv_bufsize=1500 nal_hrd=none filler=0 ip_ratio=1.40 aq=0
+[hls @ 00000124e2b09cc0] Opening 'C:\Users\drhab\AppData\Local\Temp\TestUploadFlow_EncodingThenFileList499581482\001\enc.keyinfo' for reading
+[hls @ 00000124e2b09cc0] Opening 'key.bin' for reading
+[hls muxer @ 00000124e0bcb000] error opening key file key.bin
+[out#0/hls @ 00000124e0b11b00] Could not write header (incorrect codec parameters ?): No such file or directory
+[fc#0 @ 00000124e0af4bc0] Error sending frames to consumers: No such file or directory
+[fc#0 @ 00000124e0af4bc0] Task finished with error code: -2 (No such file or directory)
+[fc#0 @ 00000124e0af4bc0] Terminating thread with return code -2 (No such file or directory)
+[out#0/hls @ 00000124e0b11b00] Nothing was written into output file, because at least one of its streams received no packets.
+frame=    0 fps=0.0 q=0.0 Lsize=       0KiB time=N/A bitrate=N/A speed=N/A elapsed=0:00:00.13    
+Conversion failed!
+2026/07/09 06:59:41 WARN watchdog.stall_detected component=watchdog job_id=upload-test-job-1 lecture_id=upload-test stall_count=1 elapsed_s=30.0027588 threshold=0
+2026/07/09 06:59:41 WARN watchdog.kill component=watchdog job_id=upload-test-job-1 lecture_id=upload-test pid=13400 reason=no_progress stall_count=1
+2026/07/09 06:59:56 ERROR pipeline.ffmpeg_error component=pipeline job_id=upload-test-job-1 lecture_id=upload-test exit_code=4294967294 stderr="ffmpeg version N-123074-g4e32fb4c2a-20260228 Copyright (c) 2000-2026 the FFmpeg developers\r\n  built with gcc 15.2.0 (crosstool-NG 1.28.0.1_403899e)\r\n  configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-opencl --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --enable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20260228\r\n  libavutil      60. 25.100 / 60. 25.100\r\n  libavcodec     62. 23.103 / 62. 23.103\r\n  libavformat    62. 10.101 / 62. 10.101\r\n  libavdevice    62.  2.100 / 62.  2.100\r\n  libavfilter    11. 12.100 / 11. 12.100\r\n  libswscale      9.  4.100 /  9.  4.100\r\n  libswresample   6.  2.100 /  6.  2.100\r\nInput #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\\Users\\drhab\\AppData\\Local\\Temp\\TestUploadFlow_EncodingThenFileList499581482\\001\\input.mp4':\r\n  Metadata:\r\n    major_brand     : isom\r\n    minor_version   : 512\r\n    compatible_brands: isomiso2avc1mp41\r\n    encoder         : Lavf62.10.101\r\n  Duration: 00:00:03.00, start: 0.000000, bitrate: 130 kb/s\r\n  Stream #0:0[0x1](und): Video: h264 (Constrained Baseline) (avc1 / 0x31637661), yuv420p(progressive), 854x480 [SAR 1:1 DAR 427:240], 126 kb/s, 30 fps, 30 tbr, 15360 tbn (default)\r\n    Metadata:\r\n      handler_name    : VideoHandler\r\n      encoder         : Lavc62.23.103 libx264\r\nStream mapping:\r\n  Stream #0:0 (h264) -> scale:default\r\n  scale:default -> Stream #0:0 (libx264)\r\nPress [q] to stop, [?] for help\r\n[libx264 @ 00000124e0b76fc0] using SAR=1/1\r\n[libx264 @ 00000124e0b76fc0] using cpu capabilities: MMX2 SSE2Fast SSSE3 SSE4.2 AVX FMA3 BMI2 AVX2\r\n[libx264 @ 00000124e0b76fc0] profile Constrained Baseline, level 3.1, 4:2:0, 8-bit\r\n[libx264 @ 00000124e0b76fc0] 264 - core 165 - H.264/MPEG-4 AVC codec - Copyleft 2003-2025 - http://www.videolan.org/x264.html - options: cabac=0 ref=1 deblock=0:0:0 analyse=0:0 me=dia subme=0 psy=1 psy_rd=1.00:0.00 mixed_ref=0 me_range=16 chroma_me=1 trellis=0 8x8dct=0 cqm=0 deadzone=21,11 fast_pskip=1 chroma_qp_offset=0 threads=1 lookahead_threads=1 sliced_threads=0 nr=0 decimate=1 interlaced=0 bluray_compat=0 constrained_intra=0 bframes=0 weightp=0 keyint=48 keyint_min=25 scenecut=0 intra_refresh=0 rc_lookahead=0 rc=abr mbtree=0 bitrate=1000 ratetol=1.0 qcomp=0.60 qpmin=0 qpmax=69 qpstep=4 vbv_maxrate=1200 vbv_bufsize=1500 nal_hrd=none filler=0 ip_ratio=1.40 aq=0\r\n[hls @ 00000124e2b09cc0] Opening 'C:\\Users\\drhab\\AppData\\Local\\Temp\\T..." error="exit status 0xfffffffe" exit_reason=watchdog_kill:no_progress
+--- FAIL: TestUploadFlow_EncodingThenFileList (45.93s)
+    upload_test.go:125: Generated test video: input.mp4 (854x480, 3.0s, 48753 bytes)
+    upload_test.go:149: runFFmpeg failed: ffmpeg exited with code 4294967294: exit status 0xfffffffe (exit_reason=watchdog_kill:no_progress)
+2026/07/09 06:59:57 WARN Failed to set FFmpeg OOM score (non-fatal, LINUX-01) pid=11752 error="open /proc/11752/oom_score_adj: The system cannot find the path specified."
+2026/07/09 06:59:57 INFO watchdog.started component=watchdog job_id=upload-3vid-360p lecture_id=test-3vid-360p pid=11752
+ffmpeg version N-123074-g4e32fb4c2a-20260228 Copyright (c) 2000-2026 the FFmpeg developers
+  built with gcc 15.2.0 (crosstool-NG 1.28.0.1_403899e)
+  configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-opencl --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --enable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20260228
+  libavutil      60. 25.100 / 60. 25.100
+  libavcodec     62. 23.103 / 62. 23.103
+  libavformat    62. 10.101 / 62. 10.101
+  libavdevice    62.  2.100 / 62.  2.100
+  libavfilter    11. 12.100 / 11. 12.100
+  libswscale      9.  4.100 /  9.  4.100
+  libswresample   6.  2.100 /  6.  2.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\drhab\AppData\Local\Temp\TestUploadFlow_ThreeVideos360p_video514676365\001\input.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf62.10.101
+  Duration: 00:00:02.00, start: 0.000000, bitrate: 104 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Constrained Baseline) (avc1 / 0x31637661), yuv420p(progressive), 640x360 [SAR 1:1 DAR 16:9], 100 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      encoder         : Lavc62.23.103 libx264
+Stream mapping:
+  Stream #0:0 (h264) -> scale:default
+  scale:default -> Stream #0:0 (libx264)
+Press [q] to stop, [?] for help
+[libx264 @ 000002848de587c0] using SAR=1/1
+[libx264 @ 000002848de587c0] using cpu capabilities: MMX2 SSE2Fast SSSE3 SSE4.2 AVX FMA3 BMI2 AVX2
+[libx264 @ 000002848de587c0] profile Constrained Baseline, level 3.0, 4:2:0, 8-bit
+[libx264 @ 000002848de587c0] 264 - core 165 - H.264/MPEG-4 AVC codec - Copyleft 2003-2025 - http://www.videolan.org/x264.html - options: cabac=0 ref=1 deblock=0:0:0 analyse=0:0 me=dia subme=0 psy=1 psy_rd=1.00:0.00 mixed_ref=0 me_range=16 chroma_me=1 trellis=0 8x8dct=0 cqm=0 deadzone=21,11 fast_pskip=1 chroma_qp_offset=0 threads=1 lookahead_threads=1 sliced_threads=0 nr=0 decimate=1 interlaced=0 bluray_compat=0 constrained_intra=0 bframes=0 weightp=0 keyint=48 keyint_min=25 scenecut=0 intra_refresh=0 rc_lookahead=0 rc=abr mbtree=0 bitrate=600 ratetol=1.0 qcomp=0.60 qpmin=0 qpmax=69 qpstep=4 vbv_maxrate=800 vbv_bufsize=1000 nal_hrd=none filler=0 ip_ratio=1.40 aq=0
+[hls @ 000002848de54fc0] Opening 'C:\Users\drhab\AppData\Local\Temp\TestUploadFlow_ThreeVideos360p_video514676365\001\enc.keyinfo' for reading
+[hls @ 000002848de54fc0] Opening 'key.bin' for reading
+[hls muxer @ 000002848fe800c0] error opening key file key.bin
+[out#0/hls @ 000002848ddf35c0] Could not write header (incorrect codec parameters ?): No such file or directory
+[fc#0 @ 000002848ddd4140] Error sending frames to consumers: No such file or directory
+[fc#0 @ 000002848ddd4140] Task finished with error code: -2 (No such file or directory)
+[fc#0 @ 000002848ddd4140] Terminating thread with return code -2 (No such file or directory)
+[out#0/hls @ 000002848ddf35c0] Nothing was written into output file, because at least one of its streams received no packets.
+frame=    0 fps=0.0 q=0.0 Lsize=       0KiB time=N/A bitrate=N/A speed=N/A elapsed=0:00:00.08    
+Conversion failed!
+2026/07/09 07:00:27 WARN watchdog.stall_detected component=watchdog job_id=upload-3vid-360p lecture_id=test-3vid-360p stall_count=1 elapsed_s=30.001854 threshold=0
+2026/07/09 07:00:27 WARN watchdog.kill component=watchdog job_id=upload-3vid-360p lecture_id=test-3vid-360p pid=11752 reason=no_progress stall_count=1
+2026/07/09 07:00:42 ERROR pipeline.ffmpeg_error component=pipeline job_id=upload-3vid-360p lecture_id=test-3vid-360p exit_code=4294967294 stderr="ffmpeg version N-123074-g4e32fb4c2a-20260228 Copyright (c) 2000-2026 the FFmpeg developers\r\n  built with gcc 15.2.0 (crosstool-NG 1.28.0.1_403899e)\r\n  configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-opencl --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --enable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20260228\r\n  libavutil      60. 25.100 / 60. 25.100\r\n  libavcodec     62. 23.103 / 62. 23.103\r\n  libavformat    62. 10.101 / 62. 10.101\r\n  libavdevice    62.  2.100 / 62.  2.100\r\n  libavfilter    11. 12.100 / 11. 12.100\r\n  libswscale      9.  4.100 /  9.  4.100\r\n  libswresample   6.  2.100 /  6.  2.100\r\nInput #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\\Users\\drhab\\AppData\\Local\\Temp\\TestUploadFlow_ThreeVideos360p_video514676365\\001\\input.mp4':\r\n  Metadata:\r\n    major_brand     : isom\r\n    minor_version   : 512\r\n    compatible_brands: isomiso2avc1mp41\r\n    encoder         : Lavf62.10.101\r\n  Duration: 00:00:02.00, start: 0.000000, bitrate: 104 kb/s\r\n  Stream #0:0[0x1](und): Video: h264 (Constrained Baseline) (avc1 / 0x31637661), yuv420p(progressive), 640x360 [SAR 1:1 DAR 16:9], 100 kb/s, 30 fps, 30 tbr, 15360 tbn (default)\r\n    Metadata:\r\n      handler_name    : VideoHandler\r\n      encoder         : Lavc62.23.103 libx264\r\nStream mapping:\r\n  Stream #0:0 (h264) -> scale:default\r\n  scale:default -> Stream #0:0 (libx264)\r\nPress [q] to stop, [?] for help\r\n[libx264 @ 000002848de587c0] using SAR=1/1\r\n[libx264 @ 000002848de587c0] using cpu capabilities: MMX2 SSE2Fast SSSE3 SSE4.2 AVX FMA3 BMI2 AVX2\r\n[libx264 @ 000002848de587c0] profile Constrained Baseline, level 3.0, 4:2:0, 8-bit\r\n[libx264 @ 000002848de587c0] 264 - core 165 - H.264/MPEG-4 AVC codec - Copyleft 2003-2025 - http://www.videolan.org/x264.html - options: cabac=0 ref=1 deblock=0:0:0 analyse=0:0 me=dia subme=0 psy=1 psy_rd=1.00:0.00 mixed_ref=0 me_range=16 chroma_me=1 trellis=0 8x8dct=0 cqm=0 deadzone=21,11 fast_pskip=1 chroma_qp_offset=0 threads=1 lookahead_threads=1 sliced_threads=0 nr=0 decimate=1 interlaced=0 bluray_compat=0 constrained_intra=0 bframes=0 weightp=0 keyint=48 keyint_min=25 scenecut=0 intra_refresh=0 rc_lookahead=0 rc=abr mbtree=0 bitrate=600 ratetol=1.0 qcomp=0.60 qpmin=0 qpmax=69 qpstep=4 vbv_maxrate=800 vbv_bufsize=1000 nal_hrd=none filler=0 ip_ratio=1.40 aq=0\r\n[hls @ 000002848de54fc0] Opening 'C:\\Users\\drhab\\AppData\\Local\\Temp\\TestU..." error="exit status 0xfffffffe" exit_reason=watchdog_kill:no_progress
+2026/07/09 07:00:43 WARN Failed to set FFmpeg OOM score (non-fatal, LINUX-01) pid=13944 error="open /proc/13944/oom_score_adj: The system cannot find the path specified."
+2026/07/09 07:00:43 INFO watchdog.started component=watchdog job_id=upload-3vid-480p lecture_id=test-3vid-480p pid=13944
+ffmpeg version N-123074-g4e32fb4c2a-20260228 Copyright (c) 2000-2026 the FFmpeg developers
+  built with gcc 15.2.0 (crosstool-NG 1.28.0.1_403899e)
+  configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-opencl --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --enable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20260228
+  libavutil      60. 25.100 / 60. 25.100
+  libavcodec     62. 23.103 / 62. 23.103
+  libavformat    62. 10.101 / 62. 10.101
+  libavdevice    62.  2.100 / 62.  2.100
+  libavfilter    11. 12.100 / 11. 12.100
+  libswscale      9.  4.100 /  9.  4.100
+  libswresample   6.  2.100 /  6.  2.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\drhab\AppData\Local\Temp\TestUploadFlow_ThreeVideos480p_video923559814\001\input.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf62.10.101
+  Duration: 00:00:03.00, start: 0.000000, bitrate: 130 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Constrained Baseline) (avc1 / 0x31637661), yuv420p(progressive), 854x480 [SAR 1:1 DAR 427:240], 126 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      encoder         : Lavc62.23.103 libx264
+Stream mapping:
+  Stream #0:0 (h264) -> scale:default
+  scale:default -> Stream #0:0 (libx264)
+Press [q] to stop, [?] for help
+[libx264 @ 00000157400c6000] using SAR=1/1
+[libx264 @ 00000157400c6000] using cpu capabilities: MMX2 SSE2Fast SSSE3 SSE4.2 AVX FMA3 BMI2 AVX2
+[libx264 @ 00000157400c6000] profile Constrained Baseline, level 3.1, 4:2:0, 8-bit
+[libx264 @ 00000157400c6000] 264 - core 165 - H.264/MPEG-4 AVC codec - Copyleft 2003-2025 - http://www.videolan.org/x264.html - options: cabac=0 ref=1 deblock=0:0:0 analyse=0:0 me=dia subme=0 psy=1 psy_rd=1.00:0.00 mixed_ref=0 me_range=16 chroma_me=1 trellis=0 8x8dct=0 cqm=0 deadzone=21,11 fast_pskip=1 chroma_qp_offset=0 threads=1 lookahead_threads=1 sliced_threads=0 nr=0 decimate=1 interlaced=0 bluray_compat=0 constrained_intra=0 bframes=0 weightp=0 keyint=48 keyint_min=25 scenecut=0 intra_refresh=0 rc_lookahead=0 rc=abr mbtree=0 bitrate=1000 ratetol=1.0 qcomp=0.60 qpmin=0 qpmax=69 qpstep=4 vbv_maxrate=1200 vbv_bufsize=1500 nal_hrd=none filler=0 ip_ratio=1.40 aq=0
+[hls @ 00000157400bbf00] Opening 'C:\Users\drhab\AppData\Local\Temp\TestUploadFlow_ThreeVideos480p_video923559814\001\enc.keyinfo' for reading
+[hls @ 00000157400bbf00] Opening 'key.bin' for reading
+[hls muxer @ 0000015740119980] error opening key file key.bin
+[out#0/hls @ 0000015740062600] Could not write header (incorrect codec parameters ?): No such file or directory
+[fc#0 @ 0000015740045580] Error sending frames to consumers: No such file or directory
+[fc#0 @ 0000015740045580] Task finished with error code: -2 (No such file or directory)
+[fc#0 @ 0000015740045580] Terminating thread with return code -2 (No such file or directory)
+[out#0/hls @ 0000015740062600] Nothing was written into output file, because at least one of its streams received no packets.
+frame=    0 fps=0.0 q=0.0 Lsize=       0KiB time=N/A bitrate=N/A speed=N/A elapsed=0:00:00.10    
+Conversion failed!
+2026/07/09 07:01:13 WARN watchdog.stall_detected component=watchdog job_id=upload-3vid-480p lecture_id=test-3vid-480p stall_count=1 elapsed_s=30.0000118 threshold=0
+2026/07/09 07:01:13 WARN watchdog.kill component=watchdog job_id=upload-3vid-480p lecture_id=test-3vid-480p pid=13944 reason=no_progress stall_count=1
+2026/07/09 07:01:28 ERROR pipeline.ffmpeg_error component=pipeline job_id=upload-3vid-480p lecture_id=test-3vid-480p exit_code=4294967294 stderr="ffmpeg version N-123074-g4e32fb4c2a-20260228 Copyright (c) 2000-2026 the FFmpeg developers\r\n  built with gcc 15.2.0 (crosstool-NG 1.28.0.1_403899e)\r\n  configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-opencl --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --enable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20260228\r\n  libavutil      60. 25.100 / 60. 25.100\r\n  libavcodec     62. 23.103 / 62. 23.103\r\n  libavformat    62. 10.101 / 62. 10.101\r\n  libavdevice    62.  2.100 / 62.  2.100\r\n  libavfilter    11. 12.100 / 11. 12.100\r\n  libswscale      9.  4.100 /  9.  4.100\r\n  libswresample   6.  2.100 /  6.  2.100\r\nInput #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\\Users\\drhab\\AppData\\Local\\Temp\\TestUploadFlow_ThreeVideos480p_video923559814\\001\\input.mp4':\r\n  Metadata:\r\n    major_brand     : isom\r\n    minor_version   : 512\r\n    compatible_brands: isomiso2avc1mp41\r\n    encoder         : Lavf62.10.101\r\n  Duration: 00:00:03.00, start: 0.000000, bitrate: 130 kb/s\r\n  Stream #0:0[0x1](und): Video: h264 (Constrained Baseline) (avc1 / 0x31637661), yuv420p(progressive), 854x480 [SAR 1:1 DAR 427:240], 126 kb/s, 30 fps, 30 tbr, 15360 tbn (default)\r\n    Metadata:\r\n      handler_name    : VideoHandler\r\n      encoder         : Lavc62.23.103 libx264\r\nStream mapping:\r\n  Stream #0:0 (h264) -> scale:default\r\n  scale:default -> Stream #0:0 (libx264)\r\nPress [q] to stop, [?] for help\r\n[libx264 @ 00000157400c6000] using SAR=1/1\r\n[libx264 @ 00000157400c6000] using cpu capabilities: MMX2 SSE2Fast SSSE3 SSE4.2 AVX FMA3 BMI2 AVX2\r\n[libx264 @ 00000157400c6000] profile Constrained Baseline, level 3.1, 4:2:0, 8-bit\r\n[libx264 @ 00000157400c6000] 264 - core 165 - H.264/MPEG-4 AVC codec - Copyleft 2003-2025 - http://www.videolan.org/x264.html - options: cabac=0 ref=1 deblock=0:0:0 analyse=0:0 me=dia subme=0 psy=1 psy_rd=1.00:0.00 mixed_ref=0 me_range=16 chroma_me=1 trellis=0 8x8dct=0 cqm=0 deadzone=21,11 fast_pskip=1 chroma_qp_offset=0 threads=1 lookahead_threads=1 sliced_threads=0 nr=0 decimate=1 interlaced=0 bluray_compat=0 constrained_intra=0 bframes=0 weightp=0 keyint=48 keyint_min=25 scenecut=0 intra_refresh=0 rc_lookahead=0 rc=abr mbtree=0 bitrate=1000 ratetol=1.0 qcomp=0.60 qpmin=0 qpmax=69 qpstep=4 vbv_maxrate=1200 vbv_bufsize=1500 nal_hrd=none filler=0 ip_ratio=1.40 aq=0\r\n[hls @ 00000157400bbf00] Opening 'C:\\Users\\drhab\\AppData\\Local\\Temp\\..." error="exit status 0xfffffffe" exit_reason=watchdog_kill:no_progress
+2026/07/09 07:01:29 WARN Failed to set FFmpeg OOM score (non-fatal, LINUX-01) pid=22456 error="open /proc/22456/oom_score_adj: The system cannot find the path specified."
+2026/07/09 07:01:29 INFO watchdog.started component=watchdog job_id=upload-3vid-720p lecture_id=test-3vid-720p pid=22456
+ffmpeg version N-123074-g4e32fb4c2a-20260228 Copyright (c) 2000-2026 the FFmpeg developers
+  built with gcc 15.2.0 (crosstool-NG 1.28.0.1_403899e)
+  configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-opencl --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --enable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20260228
+  libavutil      60. 25.100 / 60. 25.100
+  libavcodec     62. 23.103 / 62. 23.103
+  libavformat    62. 10.101 / 62. 10.101
+  libavdevice    62.  2.100 / 62.  2.100
+  libavfilter    11. 12.100 / 11. 12.100
+  libswscale      9.  4.100 /  9.  4.100
+  libswresample   6.  2.100 /  6.  2.100
+Input #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\Users\drhab\AppData\Local\Temp\TestUploadFlow_ThreeVideos720p_video112234614\001\input.mp4':
+  Metadata:
+    major_brand     : isom
+    minor_version   : 512
+    compatible_brands: isomiso2avc1mp41
+    encoder         : Lavf62.10.101
+  Duration: 00:00:02.00, start: 0.000000, bitrate: 185 kb/s
+  Stream #0:0[0x1](und): Video: h264 (Constrained Baseline) (avc1 / 0x31637661), yuv420p(progressive), 1280x720 [SAR 1:1 DAR 16:9], 181 kb/s, 30 fps, 30 tbr, 15360 tbn (default)
+    Metadata:
+      handler_name    : VideoHandler
+      encoder         : Lavc62.23.103 libx264
+Stream mapping:
+  Stream #0:0 (h264) -> scale:default
+  scale:default -> Stream #0:0 (libx264)
+Press [q] to stop, [?] for help
+[libx264 @ 000001bcc81b9c00] using SAR=1/1
+[libx264 @ 000001bcc81b9c00] using cpu capabilities: MMX2 SSE2Fast SSSE3 SSE4.2 AVX FMA3 BMI2 AVX2
+[libx264 @ 000001bcc81b9c00] profile Constrained Baseline, level 3.1, 4:2:0, 8-bit
+[libx264 @ 000001bcc81b9c00] 264 - core 165 - H.264/MPEG-4 AVC codec - Copyleft 2003-2025 - http://www.videolan.org/x264.html - options: cabac=0 ref=1 deblock=0:0:0 analyse=0:0 me=dia subme=0 psy=1 psy_rd=1.00:0.00 mixed_ref=0 me_range=16 chroma_me=1 trellis=0 8x8dct=0 cqm=0 deadzone=21,11 fast_pskip=1 chroma_qp_offset=0 threads=1 lookahead_threads=1 sliced_threads=0 nr=0 decimate=1 interlaced=0 bluray_compat=0 constrained_intra=0 bframes=0 weightp=0 keyint=48 keyint_min=25 scenecut=0 intra_refresh=0 rc_lookahead=0 rc=abr mbtree=0 bitrate=2500 ratetol=1.0 qcomp=0.60 qpmin=0 qpmax=69 qpstep=4 vbv_maxrate=2750 vbv_bufsize=4000 nal_hrd=none filler=0 ip_ratio=1.40 aq=0
+[hls @ 000001bcc6095280] Opening 'C:\Users\drhab\AppData\Local\Temp\TestUploadFlow_ThreeVideos720p_video112234614\001\enc.keyinfo' for reading
+[hls @ 000001bcc6095280] Opening 'key.bin' for reading
+[hls muxer @ 000001bcc7c87a00] error opening key file key.bin
+[out#0/hls @ 000001bcc6033040] Could not write header (incorrect codec parameters ?): No such file or directory
+[fc#0 @ 000001bcc6015100] Error sending frames to consumers: No such file or directory
+[fc#0 @ 000001bcc6015100] Task finished with error code: -2 (No such file or directory)
+[fc#0 @ 000001bcc6015100] Terminating thread with return code -2 (No such file or directory)
+[out#0/hls @ 000001bcc6033040] Nothing was written into output file, because at least one of its streams received no packets.
+frame=    0 fps=0.0 q=0.0 Lsize=       0KiB time=N/A bitrate=N/A speed=N/A elapsed=0:00:00.11    
+Conversion failed!
+2026/07/09 07:01:59 WARN watchdog.stall_detected component=watchdog job_id=upload-3vid-720p lecture_id=test-3vid-720p stall_count=1 elapsed_s=30.0010224 threshold=0
+2026/07/09 07:01:59 WARN watchdog.kill component=watchdog job_id=upload-3vid-720p lecture_id=test-3vid-720p pid=22456 reason=no_progress stall_count=1
+2026/07/09 07:01:59 ERROR pipeline.ffmpeg_error component=pipeline job_id=upload-3vid-720p lecture_id=test-3vid-720p exit_code=4294967294 stderr="ffmpeg version N-123074-g4e32fb4c2a-20260228 Copyright (c) 2000-2026 the FFmpeg developers\r\n  built with gcc 15.2.0 (crosstool-NG 1.28.0.1_403899e)\r\n  configuration: --prefix=/ffbuild/prefix --pkg-config-flags=--static --pkg-config=pkg-config --cross-prefix=x86_64-w64-mingw32- --arch=x86_64 --target-os=mingw32 --enable-gpl --enable-version3 --disable-debug --disable-w32threads --enable-pthreads --enable-iconv --enable-zlib --enable-libxml2 --enable-libvmaf --enable-fontconfig --enable-libharfbuzz --enable-libfreetype --enable-libfribidi --enable-vulkan --enable-libshaderc --enable-libvorbis --disable-libxcb --disable-xlib --disable-libpulse --enable-opencl --enable-gmp --enable-lzma --enable-liblcevc-dec --enable-amf --enable-libaom --enable-libaribb24 --enable-avisynth --enable-chromaprint --enable-libdav1d --enable-libdavs2 --enable-libdvdread --enable-libdvdnav --disable-libfdk-aac --enable-ffnvcodec --enable-cuda-llvm --enable-frei0r --enable-libgme --enable-libkvazaar --enable-libaribcaption --enable-libass --enable-libbluray --enable-libjxl --enable-libmp3lame --enable-libopus --enable-libplacebo --enable-librist --enable-libssh --enable-libtheora --enable-libvpx --enable-libwebp --enable-libzmq --enable-lv2 --enable-libvpl --enable-openal --enable-liboapv --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libopenh264 --enable-libopenjpeg --enable-libopenmpt --enable-librav1e --enable-librubberband --enable-schannel --enable-sdl2 --enable-libsnappy --enable-libsoxr --enable-libsrt --enable-libsvtav1 --enable-libtwolame --enable-libuavs3d --disable-libdrm --enable-vaapi --enable-libvidstab --enable-libvvenc --enable-whisper --enable-libx264 --enable-libx265 --enable-libxavs2 --enable-libxvid --enable-libzimg --enable-libzvbi --extra-cflags=-DLIBTWOLAME_STATIC --extra-cxxflags= --extra-libs=-lgomp --extra-ldflags=-pthread --extra-ldexeflags= --cc=x86_64-w64-mingw32-gcc --cxx=x86_64-w64-mingw32-g++ --ar=x86_64-w64-mingw32-gcc-ar --ranlib=x86_64-w64-mingw32-gcc-ranlib --nm=x86_64-w64-mingw32-gcc-nm --extra-version=20260228\r\n  libavutil      60. 25.100 / 60. 25.100\r\n  libavcodec     62. 23.103 / 62. 23.103\r\n  libavformat    62. 10.101 / 62. 10.101\r\n  libavdevice    62.  2.100 / 62.  2.100\r\n  libavfilter    11. 12.100 / 11. 12.100\r\n  libswscale      9.  4.100 /  9.  4.100\r\n  libswresample   6.  2.100 /  6.  2.100\r\nInput #0, mov,mp4,m4a,3gp,3g2,mj2, from 'C:\\Users\\drhab\\AppData\\Local\\Temp\\TestUploadFlow_ThreeVideos720p_video112234614\\001\\input.mp4':\r\n  Metadata:\r\n    major_brand     : isom\r\n    minor_version   : 512\r\n    compatible_brands: isomiso2avc1mp41\r\n    encoder         : Lavf62.10.101\r\n  Duration: 00:00:02.00, start: 0.000000, bitrate: 185 kb/s\r\n  Stream #0:0[0x1](und): Video: h264 (Constrained Baseline) (avc1 / 0x31637661), yuv420p(progressive), 1280x720 [SAR 1:1 DAR 16:9], 181 kb/s, 30 fps, 30 tbr, 15360 tbn (default)\r\n    Metadata:\r\n      handler_name    : VideoHandler\r\n      encoder         : Lavc62.23.103 libx264\r\nStream mapping:\r\n  Stream #0:0 (h264) -> scale:default\r\n  scale:default -> Stream #0:0 (libx264)\r\nPress [q] to stop, [?] for help\r\n[libx264 @ 000001bcc81b9c00] using SAR=1/1\r\n[libx264 @ 000001bcc81b9c00] using cpu capabilities: MMX2 SSE2Fast SSSE3 SSE4.2 AVX FMA3 BMI2 AVX2\r\n[libx264 @ 000001bcc81b9c00] profile Constrained Baseline, level 3.1, 4:2:0, 8-bit\r\n[libx264 @ 000001bcc81b9c00] 264 - core 165 - H.264/MPEG-4 AVC codec - Copyleft 2003-2025 - http://www.videolan.org/x264.html - options: cabac=0 ref=1 deblock=0:0:0 analyse=0:0 me=dia subme=0 psy=1 psy_rd=1.00:0.00 mixed_ref=0 me_range=16 chroma_me=1 trellis=0 8x8dct=0 cqm=0 deadzone=21,11 fast_pskip=1 chroma_qp_offset=0 threads=1 lookahead_threads=1 sliced_threads=0 nr=0 decimate=1 interlaced=0 bluray_compat=0 constrained_intra=0 bframes=0 weightp=0 keyint=48 keyint_min=25 scenecut=0 intra_refresh=0 rc_lookahead=0 rc=abr mbtree=0 bitrate=2500 ratetol=1.0 qcomp=0.60 qpmin=0 qpmax=69 qpstep=4 vbv_maxrate=2750 vbv_bufsize=4000 nal_hrd=none filler=0 ip_ratio=1.40 aq=0\r\n[hls @ 000001bcc6095280] Opening 'C:\\Users\\drhab\\AppData\\Local\\Temp\\Te..." error="exit status 0xfffffffe" exit_reason=watchdog_kill:no_progress
+--- FAIL: TestUploadFlow_ThreeVideos (122.89s)
+    --- FAIL: TestUploadFlow_ThreeVideos/360p_video (45.75s)
+        upload_test.go:244: Generated test video: input.mp4 (640x360, 2.0s, 26130 bytes)
+        upload_test.go:267: runFFmpeg failed: ffmpeg exited with code 4294967294: exit status 0xfffffffe (exit=watchdog_kill:no_progress)
+    --- FAIL: TestUploadFlow_ThreeVideos/480p_video (45.93s)
+        upload_test.go:244: Generated test video: input.mp4 (854x480, 3.0s, 48753 bytes)
+        upload_test.go:267: runFFmpeg failed: ffmpeg exited with code 4294967294: exit status 0xfffffffe (exit=watchdog_kill:no_progress)
+    --- FAIL: TestUploadFlow_ThreeVideos/720p_video (31.20s)
+        upload_test.go:244: Generated test video: input.mp4 (1280x720, 2.0s, 46347 bytes)
+        upload_test.go:267: runFFmpeg failed: ffmpeg exited with code 4294967294: exit status 0xfffffffe (exit=watchdog_kill:no_progress)
+2026/07/09 07:01:59 INFO pipeline.download_start component=pipeline job_id=full-pipeline-test lecture_id=full-test phase=download raw_key=""
+2026/07/09 07:01:59 INFO Downloading raw video from B2 key=""
+--- FAIL: TestUploadFlow_FullPipeline_WithRecordingClient (0.47s)
+    upload_test.go:330: Generated test video: input.mp4 (640x360, 1.5s, 21086 bytes)
+panic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]
+[signal 0xc0000005 code=0x0 addr=0x0 pc=0x7ff786b9fbf5]
+
+goroutine 32 [running]:
+testing.tRunner.func1.2({0x7ff786cd2260, 0x7ff78710ca00})
+	C:/Program Files/Go/src/testing/testing.go:1974 +0x239
+testing.tRunner.func1()
+	C:/Program Files/Go/src/testing/testing.go:1977 +0x349
+panic({0x7ff786cd2260?, 0x7ff78710ca00?})
+	C:/Program Files/Go/src/runtime/panic.go:860 +0x13a
+github.com/aws/aws-sdk-go-v2/service/s3.(*Client).invokeOperation(0x0, {0x7ff786d96918?, 0x31ea0018a3f0?}, {0x7ff786d613f1, 0x9}, {0x7ff786cee160, 0x31e9ffd963c0}, {0x31e9ffd82048, 0x1, 0x1}, ...)
+	C:/Users/drhab/go/pkg/mod/github.com/aws/aws-sdk-go-v2/service/s3@v1.100.1/api_client.go:270 +0x275
+github.com/aws/aws-sdk-go-v2/service/s3.(*Client).GetObject(0x7ff7871109d0?, {0x7ff786d96918?, 0x31ea0018a3f0?}, 0x31ea0023d2d8?, {0x31e9ffd82048?, 0x31ea0023d2e0?, 0x7ff7868f7a2a?})
+	C:/Users/drhab/go/pkg/mod/github.com/aws/aws-sdk-go-v2/service/s3@v1.100.1/api_op_GetObject.go:176 +0x105
+github.com/aws/aws-sdk-go-v2/feature/s3/manager.(*downloader).tryDownloadChunk(0x31ea00100400, 0x31e9ffd963c0, {0x7ff786d926e0?, 0x31e9fff1c180?})
+	C:/Users/drhab/go/pkg/mod/github.com/aws/aws-sdk-go-v2/feature/s3/manager@v1.22.17/download.go:417 +0xf0
+github.com/aws/aws-sdk-go-v2/feature/s3/manager.(*downloader).downloadChunk(0x31ea00100400, {{0x7ff786d91b80, 0x31e9ffd82040}, 0x0, 0x500000, 0x0, {0x0, 0x0}})
+	C:/Users/drhab/go/pkg/mod/github.com/aws/aws-sdk-go-v2/feature/s3/manager@v1.22.17/download.go:383 +0x2a6
+github.com/aws/aws-sdk-go-v2/feature/s3/manager.(*downloader).getChunk(0x31ea00100400)
+	C:/Users/drhab/go/pkg/mod/github.com/aws/aws-sdk-go-v2/feature/s3/manager@v1.22.17/download.go:345 +0xa5
+github.com/aws/aws-sdk-go-v2/feature/s3/manager.(*downloader).download(0x31ea00100400)
+	C:/Users/drhab/go/pkg/mod/github.com/aws/aws-sdk-go-v2/feature/s3/manager@v1.22.17/download.go:261 +0x45
+github.com/aws/aws-sdk-go-v2/feature/s3/manager.Downloader.Download({0x500000, 0x3, {0x0, 0x0}, 0x0, 0x3, {0x7ff786d91b60, 0x0}, {0x0, 0x0, ...}, ...}, ...)
+	C:/Users/drhab/go/pkg/mod/github.com/aws/aws-sdk-go-v2/feature/s3/manager@v1.22.17/download.go:226 +0x392
+github.com/a_ashraf_tech/vod-engine/internal/b2.(*Client).DownloadFile(0x31e9fff96090, {0x7ff786d96918, 0x31ea0018a3f0}, {0x0, 0x0}, {0x31e9ffdf8380?, 0x31ea0023d948?})
+	C:/Users/drhab/OneDrive/Desktop/new-minasaati/workers/vod-engine/internal/b2/download.go:31 +0x3de
+github.com/a_ashraf_tech/vod-engine/internal/encoding.(*Pipeline).downloadWithRateLimit(0x7ff786d96790?, {0x7ff786d96918?, 0x31ea0018a3f0?}, {0x0?, 0x7ff786d6a0d4?}, {0x31e9ffdf8380?, 0x31e9ffde2140?})
+	C:/Users/drhab/OneDrive/Desktop/new-minasaati/workers/vod-engine/internal/encoding/pipeline.go:640 +0x5a
+github.com/a_ashraf_tech/vod-engine/internal/encoding.(*Pipeline).Run(0x31e9fff1c140, {0x7ff786d96790, 0x7ff78716cfc0}, 0x31ea00100300, 0x7ff786d8a590)
+	C:/Users/drhab/OneDrive/Desktop/new-minasaati/workers/vod-engine/internal/encoding/pipeline.go:122 +0x710
+github.com/a_ashraf_tech/vod-engine/internal/encoding.TestUploadFlow_FullPipeline_WithRecordingClient(0x31e9ffc78000)
+	C:/Users/drhab/OneDrive/Desktop/new-minasaati/workers/vod-engine/internal/encoding/upload_test.go:345 +0x2e5
+testing.tRunner(0x31e9ffc78000, 0x7ff786d8a4a0)
+	C:/Program Files/Go/src/testing/testing.go:2036 +0xc3
+created by testing.(*T).Run in goroutine 1
+	C:/Program Files/Go/src/testing/testing.go:2101 +0x4a9
+FAIL	github.com/a_ashraf_tech/vod-engine/internal/encoding	263.189s
+ok  	github.com/a_ashraf_tech/vod-engine/internal/guardian	(cached)
+ok  	github.com/a_ashraf_tech/vod-engine/internal/logging	(cached)
+ok  	github.com/a_ashraf_tech/vod-engine/internal/metrics	(cached)
+ok  	github.com/a_ashraf_tech/vod-engine/internal/monitor	(cached)
+?   	github.com/a_ashraf_tech/vod-engine/internal/queue	[no test files]
+ok  	github.com/a_ashraf_tech/vod-engine/internal/telemetry	(cached)
+ok  	github.com/a_ashraf_tech/vod-engine/internal/watchdog	(cached)
+ok  	github.com/a_ashraf_tech/vod-engine/internal/worker	4.363s
+?   	github.com/a_ashraf_tech/vod-engine/cmd/api	[no test files]
+?   	github.com/a_ashraf_tech/vod-engine/cmd/test-upload	[no test files]
+FAIL

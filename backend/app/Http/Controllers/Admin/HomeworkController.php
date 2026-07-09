@@ -71,8 +71,8 @@ class HomeworkController extends Controller
         return ApiResponse::success([
             'id' => $homework->id,
             'title' => $homework->title,
-            // 🚀 جلب الرابط الديناميكي السحابي الصحيح
-            'fileUrl' => $this->b2Service->getUrl($homework->file_path),
+            // SEC-MAJOR-02: signed URL (10-minute lifetime) for admin viewing.
+            'fileUrl' => $this->b2Service->getSignedUrl($homework->file_path, 600),
         ], $message);
     }
 
@@ -93,8 +93,8 @@ class HomeworkController extends Controller
             return [
                 'id' => $sub->id,
                 'status' => $sub->status,
-                // 🚀 الإنقاذ العظيم: استخدام السحابة بدلاً من asset('storage/') المكسور!
-                'fileUrl' => $sub->file_path ? $this->b2Service->getUrl($sub->file_path) : null,
+                // SEC-MAJOR-02: signed URL (10-minute lifetime) for admin viewing.
+                'fileUrl' => $sub->file_path ? $this->b2Service->getSignedUrl($sub->file_path, 600) : null,
                 'submittedAt' => $sub->created_at->format('Y-m-d H:i:s'),
                 'student' => [
                     'id' => $sub->user->id,

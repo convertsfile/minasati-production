@@ -8,6 +8,8 @@ use App\Http\Responses\ApiResponse; // 🚀 استدعاء الميثاق الم
 use App\Models\Lecture;
 use App\Models\LectureProgress;
 use App\Models\User;
+use App\Services\InternalJwtService;
+use App\Services\Metrics\ApplicationMetrics;
 use App\Services\PlanService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -18,6 +20,10 @@ use Illuminate\Support\Str;
 
 class VideoEngineController extends Controller
 {
+    public function __construct(
+        private ApplicationMetrics $metrics
+    ) {}
+
     /**
      * 1. إصدار تذكرة الرفع (Upload Ticket) للسحابة
      */
@@ -89,9 +95,20 @@ class VideoEngineController extends Controller
      */
     public function handleWebhook(Request $request)
     {
-        // 🚀 أمان عالي: حماية الـ Webhook من الطلبات المزيفة
-        if ($request->header('X-Internal-Secret') !== env('JWT_SECRET')) {
-            return ApiResponse::error('Unauthorized', 'ERR_UNAUTHORIZED', 403);
+        // 🚀 أمان عالي: حماية الـ Webhook بـ JWT موقّع (HS256) بدلاً من مقارنة نصّية
+        // الـ Token يأتي في الـ Header: Authorization: Bearer <jwt>
+        $bearer = InternalJwtService::extractBearerToken($request->header('Authorization'));
+        if (!$bearer) {
+            $this->metrics->recordWebhook('vod_engine', 'video.encoded', 'invalid_signature');
+            return ApiResponse::error('Unauthorized: missing bearer token', 'ERR_UNAUTHORIZED', 403);
+        }
+
+        try {
+            $claims = InternalJwtService::verify($bearer, 'video.encoded', 120);
+        } catch (\Throwable $e) {
+            Log::warning('Webhook JWT verification failed: ' . $e->getMessage());
+            $this->metrics->recordWebhook('vod_engine', 'video.encoded', 'invalid_signature');
+            return ApiResponse::error('Unauthorized: ' . $e->getMessage(), 'ERR_UNAUTHORIZED', 403);
         }
 
         $request->validate([
@@ -103,6 +120,7 @@ class VideoEngineController extends Controller
         $lecture = Lecture::find($request->lecture_id);
 
         if (!$lecture) {
+            $this->metrics->recordWebhook('vod_engine', 'video.encoded', 'not_found');
             return ApiResponse::error('Lecture not found', 'ERR_NOT_FOUND', 404);
         }
 
@@ -120,6 +138,12 @@ class VideoEngineController extends Controller
         }
 
         $lecture->save();
+
+        // 🚀 RELIABILITY-MAJOR-02: record the webhook outcome so
+        // operators can see video-encoded events flowing through
+        // Prometheus (source="vod_engine", event="video.encoded",
+        // outcome=processed | not_found | invalid_signature).
+        $this->metrics->recordWebhook('vod_engine', 'video.encoded', 'processed');
 
         return ApiResponse::success(['lectureId' => $lecture->id], 'Webhook processed');
     }
@@ -235,7 +259,12 @@ class VideoEngineController extends Controller
         try {
             $planLimits = PlanService::getCurrentPlanLimits();
             $goUrl = config('services.video.go_url', env('GO_ENGINE_URL')) . '/api/v1/video/process';
-            $response = Http::timeout(5)->withHeaders(['X-Internal-Secret' => env('JWT_SECRET')])
+            $token = InternalJwtService::issue((string) $lecture->id, 'video.process', 60);
+            $response = Http::timeout(5)
+                ->withHeaders([
+                    'Authorization' => 'Bearer ' . $token,
+                    'X-Internal-Key' => 'vod-process-v1',
+                ])
                 ->post($goUrl, [
                     'lecture_id' => (string) $lecture->id,
                     'raw_key' => $lecture->raw_key,
@@ -258,8 +287,16 @@ class VideoEngineController extends Controller
      */
     public function updateProgress(Request $request, Lecture $lecture)
     {
-        if ($request->header('X-Internal-Secret') !== config('services.video.jwt_secret', env('JWT_SECRET'))) {
-            return ApiResponse::error('Unauthorized', 'ERR_UNAUTHORIZED', 403);
+        $bearer = InternalJwtService::extractBearerToken($request->header('Authorization'));
+        if (!$bearer) {
+            return ApiResponse::error('Unauthorized: missing bearer token', 'ERR_UNAUTHORIZED', 403);
+        }
+
+        try {
+            InternalJwtService::verify($bearer, 'video.progress', 120);
+        } catch (\Throwable $e) {
+            Log::warning('updateProgress JWT verification failed: ' . $e->getMessage());
+            return ApiResponse::error('Unauthorized: ' . $e->getMessage(), 'ERR_UNAUTHORIZED', 403);
         }
 
         $phase = $request->input('phase', 'processing');

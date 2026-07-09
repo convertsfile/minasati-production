@@ -1,0 +1,98 @@
+# Local production-mirror stack for the Laravel backend.
+#
+# RELIABILITY-MAJOR-04: gives the Laravel app the same kind of
+# one-command "run the whole thing locally" workflow that the VOD
+# engine already has via systemd. This stack is intentionally
+# close to what a k8s deployment would look like (php-fpm sidecar,
+# nginx sidecar, queue worker, reverb, optional mysql) so that
+# "docker compose up" is a faithful preview of production.
+#
+# Run:
+#   docker compose -f deploy/laravel/docker-compose.yml up -d
+#
+# Stop:
+#   docker compose -f deploy/laravel/docker-compose.yml down
+#
+# Roll back to the previous tagged image:
+#   deploy/laravel/rollback-laravel.sh v1.2.3
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/laravel/Dockerfile
+    image: minassati-laravel:latest
+    restart: unless-stopped
+    env_file:
+      - ../../backend/.env
+    volumes:
+      # Persistent storage for uploaded media and logs.
+      - laravel_storage:/var/www/html/storage
+      - laravel_bootstrap_cache:/var/www/html/bootstrap/cache
+    networks:
+      - laravel_net
+    healthcheck:
+      # /health/live is the new RELIABILITY-MAJOR-01 endpoint.
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - laravel_net
+
+  queue:
+    image: minassati-laravel:latest
+    restart: unless-stopped
+    command: ["php", "artisan", "queue:work", "--tries=3", "--backoff=10", "--sleep=1", "--timeout=120"]
+    env_file:
+      - ../../backend/.env
+    volumes:
+      - laravel_storage:/var/www/html/storage
+      - laravel_bootstrap_cache:/var/www/html/bootstrap/cache
+    networks:
+      - laravel_net
+
+  reverb:
+    image: minassati-laravel:latest
+    restart: unless-stopped
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8081"]
+    env_file:
+      - ../../backend/.env
+    networks:
+      - laravel_net
+
+  scheduler:
+    image: minassati-laravel:latest
+    restart: unless-stopped
+    command: >
+      sh -c "while true; do
+        php artisan schedule:run --no-interaction;
+        sleep 60;
+      done"
+    env_file:
+      - ../../backend/.env
+    volumes:
+      - laravel_storage:/var/www/html/storage
+      - laravel_bootstrap_cache:/var/www/html/bootstrap/cache
+    networks:
+      - laravel_net
+
+volumes:
+  laravel_storage:
+  laravel_bootstrap_cache:
+
+networks:
+  laravel_net:
+    driver: bridge

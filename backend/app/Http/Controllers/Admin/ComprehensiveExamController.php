@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Responses\ApiResponse;
 use App\Models\Course;
 use App\Models\ComprehensiveExam;
 use App\Models\ComprehensiveExamQuestion;
@@ -24,7 +25,7 @@ class ComprehensiveExamController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        return response()->json(['data' => $exams]);
+        return ApiResponse::success($exams, 'تم جلب الاختبارات الشاملة بنجاح');
     }
 
     // إنشاء اختبار شامل جديد
@@ -50,7 +51,7 @@ class ComprehensiveExamController extends Controller
 
         $exam = ComprehensiveExam::create($validated);
 
-        return response()->json(['data' => $exam, 'message' => 'تم الإنشاء بنجاح'], 201);
+        return ApiResponse::success($exam, 'تم الإنشاء بنجاح', 201);
     }
 
     // تحديث بيانات اختبار شامل
@@ -75,7 +76,7 @@ class ComprehensiveExamController extends Controller
 
         $exam->update($validated);
 
-        return response()->json(['data' => $exam, 'message' => 'تم التحديث بنجاح']);
+        return ApiResponse::success($exam, 'تم التحديث بنجاح');
     }
 
     // مسح اختبار شامل (يدمر الأسئلة والمحاولات تلقائياً بفضل cascadeOnDelete)
@@ -84,7 +85,7 @@ class ComprehensiveExamController extends Controller
         $exam = ComprehensiveExam::findOrFail($id);
         $exam->delete();
 
-        return response()->json(['message' => 'تم تدمير الاختبار بنجاح']);
+        return ApiResponse::success(null, 'تم تدمير الاختبار بنجاح');
     }
 
     // ==========================================
@@ -97,7 +98,7 @@ class ComprehensiveExamController extends Controller
             ->orderBy('id', 'asc')
             ->get();
 
-        return response()->json(['data' => $questions]);
+        return ApiResponse::success($questions, 'تم جلب أسئلة الاختبار بنجاح');
     }
 
     public function storeQuestion(Request $request, $examId)
@@ -123,6 +124,6 @@ class ComprehensiveExamController extends Controller
 
         $question = ComprehensiveExamQuestion::create($validated);
 
-        return response()->json(['data' => $question, 'message' => 'تمت إضافة السؤال']);
+        return ApiResponse::success($question, 'تمت إضافة السؤال', 201);
     }
 }

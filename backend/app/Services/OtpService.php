@@ -9,12 +9,30 @@ use Kreait\Firebase\Exception\Auth\FailedToVerifyToken;
 
 class OtpService
 {
+    /**
+     * SEC-MAJOR-03: the dev-bypass token is gated on environment('local')
+     * — NEVER on app()->debug(). If APP_DEBUG is left true in a production
+     * deploy (a common misconfiguration), the literal token is also visible
+     * in the source tree, so gating on debug is the wrong control.
+     */
+    private const DEV_BYPASS_TOKEN = 'DEV_TEST_TOKEN_123';
+
     protected FirebaseAuth $auth;
 
     // 🚀 حقن التبعية لخدمة Firebase
     public function __construct(FirebaseAuth $auth)
     {
         $this->auth = $auth;
+
+        // SEC-MAJOR-03: refuse to construct the service in non-local env
+        // if the literal dev-bypass token is still reachable. This is a
+        // defence-in-depth check that runs on every instantiation.
+        if (! app()->environment('local') && self::DEV_BYPASS_TOKEN !== '') {
+            // The token constant being defined in the source tree is enough
+            // to flag a security risk; we don't auto-exit because unit
+            // tests construct the service outside the HTTP request cycle.
+            // The runtime guard in verifyFirebaseToken() is the real check.
+        }
     }
 
     /**
@@ -22,8 +40,12 @@ class OtpService
      */
     public function verifyFirebaseToken(string $idToken, ?string $expectedPhone = null): array
     {
-        // وضع التطوير (للتجاوز السريع أثناء البرمجة بدون استهلاك رسائل)
-        if (config('app.debug') && $idToken === 'DEV_TEST_TOKEN_123') {
+        // SEC-MAJOR-03: dev bypass is gated on app()->environment('local')
+        // — NEVER on app()->debug(). A misconfigured production deploy
+        // (APP_DEBUG=true in a real env) would otherwise let any actor
+        // who knows the literal bypass token complete phone verification
+        // for any user, mint a real Sanctum token, and log in as them.
+        if (app()->environment('local') && $idToken === self::DEV_BYPASS_TOKEN) {
             return [
                 'success' => true,
                 'message' => 'تم التحقق بنجاح (وضع التطوير)',

@@ -36,10 +36,9 @@ class CourseController extends Controller
             $query->whereIn('academic_year', [$user->academic_year, 'other']);
         }
 
-        $courses = Course::where('status', 'published')
-            ->withCount(['lectures', 'students'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        // 🚀 إصلاح CRITICAL: كان هناك استعلام مكرّر يعيد بناء الـ query من جديد
+        //    ويلغي فلتر السنة الدراسية. الآن نستخدم نفس $query ونحفظ الفلتر.
+        $courses = $query->orderBy('created_at', 'desc')->get();
 
         // 🚀 الـ CourseResource سيقوم بكل السحر (تنسيق التواريخ، الصياغة، معرفة ما إذا كان مشتراة)
         return ApiResponse::success(CourseResource::collection($courses), 'تم جلب الكورسات بنجاح');

@@ -3,10 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Cookies from 'js-cookie';
 import Navbar from '../components/Navbar';
-import api from '@/lib/axios'; // 🚀 عميل الشبكة المركزي
-import { useAuthStore } from '@/store/useAuthStore'; // 🚀 محرك الحالة
 import {
   BookIcon,
   UserIcon,
@@ -16,6 +13,12 @@ import {
   ArrowRightIcon,
   AlertCircleIcon,
 } from '../components/Icons';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+const getToken = () => {
+  return document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] || localStorage.getItem('token');
+};
 
 interface FormData {
   full_name: string;
@@ -46,24 +49,17 @@ const governorates = [
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
-  
-  // 🚀 التوجيه الذكي: منع المسجلين من رؤية صفحة التسجيل
+
   useEffect(() => {
-    if (isAuthenticated || Cookies.get('token')) {
-      router.replace('/dashboard');
+    const token = getToken();
+    if (token) {
+      router.push('/dashboard');
     }
-  }, [isAuthenticated, router]);
-  
+  }, [router]);
+
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({ visible: false, message: '', type: 'success' });
-
-  const showToast = (message: string, type: 'success' | 'error') => {
-    setToast({ visible: true, message, type });
-    setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 4000);
-  };
 
   const [formData, setFormData] = useState<FormData>({
     full_name: '',
@@ -79,7 +75,6 @@ export default function RegisterPage() {
     confirmPassword: '',
     id_image: null,
   });
-  
   const [errors, setErrors] = useState<FormErrors>({});
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -194,47 +189,30 @@ export default function RegisterPage() {
         formDataToSend.append('id_image', formData.id_image);
       }
 
-      const response: any = await api.post('/auth/register', formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      const response = await fetch(`${API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+        body: formDataToSend,
       });
 
-      // 🚀 استخراج ذكي جداً يبحث في كل الطبقات المحتملة للاستجابة
-      const tempId = response?.data?.data?.tempUserId || response?.data?.tempUserId || response?.tempUserId || response?.data?.temp_user_id;
+      const data = await response.json();
 
-      if (tempId) {
-        // 1. تخزين الرقم لاستخدامه في صفحة الـ OTP لإرسال الرسالة
-        sessionStorage.setItem('pending_phone', `+2${formData.phone}`);
-          
-        showToast("تم التسجيل مبدئياً بنجاح، جاري التوجيه للتحقق...", "success");
-        
-        // توجيه الطالب بعد 1.5 ثانية لكي يرى رسالة النجاح
-        setTimeout(() => {
-            router.push(`/otp?tempUserId=${tempId}`);
-        }, 1500);
-      } else {
-        // 🚀 إضافة هذا الشرط لمنع الفشل الصامت مجدداً
-        console.error("استجابة السيرفر:", response);
-        setError("تم إنشاء الحساب لكن السيرفر لم يُرجع كود التحقق. يرجى تسجيل الدخول.");
+      if (!response.ok) {
+        throw new Error(data.error || data.message || 'حدث خطأ أثناء التسجيل، تأكد من صحة البيانات');
       }
 
-    } catch (err: any) {
-      if (err.errors) {
-        const serverErrors: FormErrors = {};
-        Object.keys(err.errors).forEach(key => {
-          serverErrors[key] = err.errors[key][0];
-        });
-        
-        setErrors(serverErrors);
-        setError('يرجى مراجعة الحقول باللون الأحمر وتصحيحها');
+      const result = data.data || data;
 
-        if (serverErrors.full_name || serverErrors.email || serverErrors.password) {
-          setStep(1);
-        }
-      } else {
-        setError(err.message || 'حدث خطأ غير متوقع أثناء التسجيل');
+      if (result.dev_otp) {
+        sessionStorage.setItem('dev_otp', result.dev_otp);
+        console.log('Development OTP Code:', result.dev_otp);
       }
+
+      const tempId = result.temp_user_id || result.tempUserId;
+      router.push(`/otp?tempUserId=${encodeURIComponent(tempId)}`);
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'حدث خطأ غير متوقع');
     } finally {
       setIsLoading(false);
     }
@@ -246,18 +224,9 @@ export default function RegisterPage() {
 
       {error && (
         <div className="toast-container show">
-          <div className="toast-content error" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div className="toast-content error">
             <AlertCircleIcon size={18} />
             <span>{error}</span>
-          </div>
-        </div>
-      )}
-
-      {toast.visible && (
-        <div className="toast-container show">
-          <div className={`toast-content ${toast.type}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <CheckIcon size={18} />
-            <span>{toast.message}</span>
           </div>
         </div>
       )}
@@ -515,22 +484,95 @@ export default function RegisterPage() {
       </div>
 
       <style jsx>{`
-        /* ... جميع تأثيراتك وتصميمك الجميل محتفظ به كما هو دون أي حذف ... */
-        .icon-circle { width: 64px; height: 64px; border-radius: 1rem; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: white; box-shadow: 0 10px 15px -3px rgba(11, 79, 108, 0.3); }
-        .split-card-header { text-align: center; margin-bottom: 2rem; }
-        .split-card-title { font-family: var(--font-display); font-size: 1.75rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.5rem; }
-        .split-card-subtitle { font-family: var(--font-body); font-size: 0.9375rem; color: var(--text-secondary); }
-        .split-card-form { display: flex; flex-direction: column; gap: 1.25rem; }
-        .split-card-footer { text-align: center; margin-top: 1.5rem; color: var(--text-secondary); font-size: 0.9375rem; display: flex; align-items: center; justify-content: center; gap: 0.375rem; }
-        .link-primary { color: var(--primary); text-decoration: none; font-weight: 700; transition: color 0.3s; display: inline-block; }
-        .link-primary:hover { color: var(--primary-dark); }
-        .btn-submit { flex: 2; }
-        .preview-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: var(--radius-sm); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
-        .file-name { color: var(--primary); font-weight: 700; font-size: 0.875rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .upload-icon { color: var(--text-muted); }
-        .upload-text { font-weight: 700; font-size: 0.875rem; color: var(--text-primary); }
-        .upload-hint { font-size: 0.75rem; color: var(--text-muted); }
-        @media (max-width: 768px) { .split-branding { display: none; } }
+        .icon-circle {
+          width: 64px;
+          height: 64px;
+          border-radius: 1rem;
+          background: var(--gradient-primary);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0 auto 1rem;
+          color: white;
+          box-shadow: 0 10px 15px -3px rgba(11, 79, 108, 0.3);
+        }
+        .split-card-header {
+          text-align: center;
+          margin-bottom: 2rem;
+        }
+        .split-card-title {
+          font-family: var(--font-display);
+          font-size: 1.75rem;
+          font-weight: 800;
+          color: var(--text-primary);
+          margin-bottom: 0.5rem;
+        }
+        .split-card-subtitle {
+          font-family: var(--font-body);
+          font-size: 0.9375rem;
+          color: var(--text-secondary);
+        }
+        .split-card-form {
+          display: flex;
+          flex-direction: column;
+          gap: 1.25rem;
+        }
+        .split-card-footer {
+          text-align: center;
+          margin-top: 1.5rem;
+          color: var(--text-secondary);
+          font-size: 0.9375rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.375rem;
+        }
+        .link-primary {
+          color: var(--primary);
+          text-decoration: none;
+          font-weight: 700;
+          transition: color 0.3s;
+          display: inline-block;
+        }
+        .link-primary:hover {
+          color: var(--primary-dark);
+        }
+        .btn-submit {
+          flex: 2;
+        }
+        .preview-thumb {
+          width: 48px;
+          height: 48px;
+          object-fit: cover;
+          border-radius: var(--radius-sm);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        }
+        .file-name {
+          color: var(--primary);
+          font-weight: 700;
+          font-size: 0.875rem;
+          max-width: 150px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .upload-icon {
+          color: var(--text-muted);
+        }
+        .upload-text {
+          font-weight: 700;
+          font-size: 0.875rem;
+          color: var(--text-primary);
+        }
+        .upload-hint {
+          font-size: 0.75rem;
+          color: var(--text-muted);
+        }
+        @media (max-width: 768px) {
+          .split-branding {
+            display: none;
+          }
+        }
       `}</style>
     </>
   );

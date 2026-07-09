@@ -11,6 +11,7 @@ import (
 
 	"github.com/a_ashraf_tech/vod-engine/internal/api/handlers"
 	"github.com/a_ashraf_tech/vod-engine/internal/api/middlewares"
+	"github.com/a_ashraf_tech/vod-engine/internal/auth"
 	"github.com/a_ashraf_tech/vod-engine/internal/b2"
 	"github.com/a_ashraf_tech/vod-engine/internal/circuitbreaker"
 	"github.com/a_ashraf_tech/vod-engine/internal/config"
@@ -37,6 +38,12 @@ func main() {
 
 	if cfg.JWTSecret == "" {
 		slog.Error("Fatal: JWT_SECRET environment variable is missing")
+		os.Exit(1)
+	}
+
+	// SEC-CRIT-01: refuse to boot with a known-leaked or low-entropy JWT secret.
+	if err := auth.ValidateJWTSecret(cfg.JWTSecret); err != nil {
+		slog.Error("Fatal: JWT_SECRET rejected", "error", err)
 		os.Exit(1)
 	}
 

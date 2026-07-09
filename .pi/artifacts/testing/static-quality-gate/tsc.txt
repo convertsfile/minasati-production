@@ -1,0 +1,8 @@
+app/admin/courses/[id]/comprehensive-exams/page.tsx(417,50): error TS2339: Property 'form_index' does not exist on type 'ComprehensiveExam'.
+app/admin/courses/[id]/comprehensive-exams/page.tsx(690,90): error TS2345: Argument of type '"info"' is not assignable to parameter of type '"error" | "success"'.
+app/components/Navbar.tsx(28,28): error TS2339: Property 'hasCourses' does not exist on type 'User'.
+app/courses/page.tsx(47,28): error TS2339: Property 'authLoading' does not exist on type 'AuthState'.
+app/otp/page.tsx(89,13): error TS2304: Cannot find name 'grecaptcha'.
+app/otp/page.tsx(169,46): error TS2339: Property 'token' does not exist on type 'AxiosResponse<any, any, {}>'.
+app/otp/page.tsx(170,63): error TS2339: Property 'token' does not exist on type 'AxiosResponse<any, any, {}>'.
+app/otp/page.tsx(171,54): error TS2339: Property 'user' does not exist on type 'AxiosResponse<any, any, {}>'.

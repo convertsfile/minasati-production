@@ -6,6 +6,7 @@ use App\Models\Course;
 use App\Models\Lecture;
 use App\Models\Setting;
 use App\Models\User;
+use App\Services\InternalJwtService;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Support\Facades\Cache;
@@ -15,6 +16,13 @@ use Laravel\Sanctum\Sanctum;
 use Mockery;
 use Tests\TestCase;
 
+/**
+ * ملاحظة (وفق AGENTS.md):
+ * - التواصل بين Laravel ومحرك Go يستخدم JWT (Authorization: Bearer ...)
+ *   وليس نصّاً مُقارَناً مع X-Internal-Secret. (انظر InternalJwtService)
+ * - رسالة حدّ التخزين الفعلية هي:
+ *   "لقد بلغت الحد الأقصى للمساحة المسموحة لباقة الاشتراك."
+ */
 class VideoEngineTest extends TestCase
 {
     use DatabaseTruncation;
@@ -78,7 +86,7 @@ class VideoEngineTest extends TestCase
         $this->assertStringContainsString('http://mock-b2-url.com/streams/lecture_999/v0/segment_000.ts', $content);
     }
 
-    public function test_start_processing_sends_allowed_qualities_based_on_plan()
+    public function test_start_processing_sends_jwt_authorization_to_go_worker()
     {
         // 1. Setup Models
         $admin = User::factory()->create(['role' => 'admin']);
@@ -105,13 +113,41 @@ class VideoEngineTest extends TestCase
         // 5. Call startProcessing
         $response = $this->postJson("/api/admin/lectures/{$lecture->id}/start-processing");
 
-        // 6. Verify request payload contained 'qualities' => ['480p']
+        // 6. Verify request payload contained 'qualities' => ['480p'] AND JWT auth header
         Http::assertSent(function ($request) {
-            return $request->url() == 'http://127.0.0.1:8080/api/v1/video/process' &&
-                   $request['qualities'] === ['480p'];
+            $hasQualities = ($request['qualities'] ?? null) === ['480p'];
+            // 🚀 MAJOR FIX: $request->header() يُرجع مصفوفة، نحتاج [0] ?? '' لتفادي
+            // "Array to string conversion" warning
+            $authHeader = $request->header('Authorization');
+            $authValue = is_array($authHeader) ? ($authHeader[0] ?? '') : (string) $authHeader;
+            $hasJwt = str_starts_with($authValue, 'Bearer ');
+            return $request->url() == 'http://127.0.0.1:8080/api/v1/video/process'
+                && $hasQualities
+                && $hasJwt;
         });
 
         $response->assertStatus(200);
+    }
+
+    public function test_internal_jwt_service_round_trip()
+    {
+        // عقد الإصدار والتحقق يجب أن يعمل (دخان للـ InternalJwtService)
+        $token = InternalJwtService::issue('123', 'video.encoded', 60);
+        $this->assertNotEmpty($token);
+
+        $claims = InternalJwtService::verify($token, 'video.encoded', 120);
+        $this->assertEquals('laravel', $claims['iss']);
+        $this->assertEquals('vod-engine', $claims['aud']);
+        $this->assertEquals('123', $claims['sub']);
+        $this->assertEquals('video.encoded', $claims['event']);
+        $this->assertEquals('v1', $claims['kid']);
+    }
+
+    public function test_internal_jwt_rejects_wrong_event()
+    {
+        $token = InternalJwtService::issue('123', 'video.encoded', 60);
+        $this->expectException(\Throwable::class);
+        InternalJwtService::verify($token, 'video.process', 120);
     }
 
     public function test_get_upload_token_fails_when_storage_limit_reached()
@@ -140,9 +176,13 @@ class VideoEngineTest extends TestCase
         // 3. Request upload token
         $response = $this->getJson("/api/admin/lectures/{$lecture->id}/upload-ticket");
 
-        // 4. Verify 403 response with "لقد بلغت الحد الأقصى للمساحة"
+        // 4. Verify 403 response — الكود الفعلي يصدر 'ERR_STORAGE_LIMIT' ورسالة كاملة.
         $response->assertStatus(403)
-            ->assertJsonPath('error', 'لقد بلغت الحد الأقصى للمساحة');
+            ->assertJsonPath('code', 'ERR_STORAGE_LIMIT');
+        $this->assertStringContainsString(
+            'لقد بلغت الحد الأقصى للمساحة',
+            (string) $response->json('message', '')
+        );
     }
 
     public function test_admin_limits_endpoint_returns_correct_data()
@@ -219,7 +259,8 @@ class VideoEngineTest extends TestCase
         ]);
 
         Storage::disk('b2')->put('lectures/1/raw_video.mp4', 'dummy raw video content');
-        Storage::disk('b2')->put('streams/lecture_1/master.m3u8', 'dummy hls playlist');
+        // 🚀 ملاحظة: لا نضع m3u8 على الـ disk لأن destroyVideo يفوّض حذفه لمحرك Go
+        // (وليس لـ Storage::disk('b2')) - لذلك سنتأكد من إرسال طلب DELETE لمحرك Go
 
         Sanctum::actingAs($admin);
 
@@ -227,9 +268,17 @@ class VideoEngineTest extends TestCase
 
         $response->assertStatus(200);
 
-        // Verify B2 cleanup
+        // Verify raw_key was deleted from B2 (Laravel-side)
         Storage::disk('b2')->assertMissing('lectures/1/raw_video.mp4');
-        Storage::disk('b2')->assertMissing('streams/lecture_1/master.m3u8');
+
+        // 🚀 MAJOR FIX: التأكد أن destroyVideo أرسل DELETE لمحرك Go لحذف ملفات m3u8/segments
+        Http::assertSent(function ($request) use ($lecture) {
+            $authHeader = $request->header('Authorization');
+            $authValue = is_array($authHeader) ? ($authHeader[0] ?? '') : (string) $authHeader;
+            return $request->method() === 'DELETE'
+                && $request->url() === 'http://127.0.0.1:8080/api/v1/video/' . $lecture->id
+                && str_starts_with($authValue, 'Bearer ');
+        });
 
         // Verify DB updates
         $lecture->refresh();

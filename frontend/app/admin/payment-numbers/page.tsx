@@ -1,27 +1,23 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import AdminSidebar from '../../components/AdminSidebar';
-import { useAuthGuard } from '../../hooks/useAuthGuard'; // 🚀 حارس البوابة المركزي
-import api from '@/lib/axios'; // 🚀 العميل الشبكي المحمي
-import { 
-  PlusIcon, XIcon, TrashIcon, CheckCircleIcon, 
-  AlertCircleIcon, PhoneIcon, CreditCardIcon, AlertTriangleIcon 
-} from '../../components/Icons';
+import { PlusIcon, XIcon, TrashIcon, CheckCircleIcon, AlertCircleIcon, PhoneIcon, CreditCardIcon, AlertTriangleIcon } from '../../components/Icons';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 interface PaymentNumber {
   id: number;
   provider: 'instapay' | 'vodafone_cash';
   number: string;
-  displayOrder: number;
-  isActive: boolean;
-  createdAt: string;
+  display_order: number;
+  is_active: boolean;
+  created_at: string;
 }
 
 export default function PaymentNumbersPage() {
-  // 🚀 درع الحماية: يطرد المتطفلين فوراً ويعرض شاشة التحميل ريثما يتأكد
-  const { isChecking } = useAuthGuard(['admin']);
-
+  const router = useRouter();
   const [instapayNumbers, setInstapayNumbers] = useState<PaymentNumber[]>([]);
   const [vodafoneNumbers, setVodafoneNumbers] = useState<PaymentNumber[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,83 +28,83 @@ export default function PaymentNumbersPage() {
   const [newOrder, setNewOrder] = useState('1');
   const [saving, setSaving] = useState(false);
 
-  // 🚀 نظام التنبيهات الموحد الأنيق
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({ visible: false, message: '', type: 'success' });
+  
   const [confirmDialog, setConfirmDialog] = useState<{ visible: boolean; message: string; onConfirm: () => void } | null>(null);
 
-  const showToast = useCallback((message: string, type: 'success' | 'error') => {
+  const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ visible: true, message, type });
-    setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 4000);
-  }, []);
+    setTimeout(() => setToast({ visible: false, message: '', type: 'success' }), 3000);
+  };
 
-  // إغلاق التمرير عند فتح نافذة التأكيد
-  useEffect(() => {
-    if (confirmDialog) document.body.style.overflow = 'hidden';
-    else document.body.style.overflow = '';
-    return () => { document.body.style.overflow = ''; };
-  }, [confirmDialog]);
-
-  // 🚀 جلب البيانات فقط بعد التأكد من الصلاحيات
-  useEffect(() => {
-    if (!isChecking) {
-      fetchNumbers();
-    }
-  }, [isChecking]);
+  const getToken = () => {
+    return document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] || localStorage.getItem('token');
+  };
 
   const fetchNumbers = async () => {
     setLoading(true);
     try {
-      // 🚀 الاستعلام عبر العميل المركزي
-      const response = await api.get('/admin/payment-numbers');
-      
-      const allNumbers = response.data?.data || response.data || [];
-      
-      // التوافقية والأمان في استخراج البيانات
-      const mappedNumbers: PaymentNumber[] = allNumbers.map((n: any) => ({
-        id: n.id,
-        provider: n.provider,
-        number: n.number,
-        displayOrder: n.display_order ?? n.displayOrder ?? 1,
-        isActive: n.is_active ?? n.isActive ?? false,
-        createdAt: n.created_at ?? n.createdAt ?? '',
-      }));
+      const token = getToken();
+      const response = await fetch(`${API_URL}/api/admin/payment-numbers`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+      });
 
-      // 🚀 ترتيب الأرقام حسب ترتيب العرض (displayOrder) لضمان دقة العرض
-      mappedNumbers.sort((a, b) => a.displayOrder - b.displayOrder);
-
-      setInstapayNumbers(mappedNumbers.filter(n => n.provider === 'instapay'));
-      setVodafoneNumbers(mappedNumbers.filter(n => n.provider === 'vodafone_cash'));
-    } catch (err: any) {
-      showToast(err?.message || 'فشل الاتصال بالخادم لجلب الأرقام', 'error');
+      if (response.ok) {
+        const data = await response.json();
+        const allNumbers = data.data || [];
+        setInstapayNumbers(allNumbers.filter((n: PaymentNumber) => n.provider === 'instapay'));
+        setVodafoneNumbers(allNumbers.filter((n: PaymentNumber) => n.provider === 'vodafone_cash'));
+      } else if (response.status === 401) {
+        router.push('/login');
+      }
+    } catch (err) {
+      showToast('فشل الاتصال بالخادم', 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    fetchNumbers();
+  }, []);
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newNumber.trim() || !newOrder) {
-      showToast('يرجى تعبئة جميع الحقول المطلوبة', 'error');
-      return;
-    }
+    if (!newNumber || !newOrder) return;
 
     setSaving(true);
     try {
-      // 🚀 الإرسال الآمن عبر Axios
-      await api.post('/admin/payment-numbers', {
-        provider: newProvider,
-        number: newNumber.trim(),
-        display_order: parseInt(newOrder) || 1, // حماية من القيم الفارغة
-        is_active: true
+      const token = getToken();
+      const response = await fetch(`${API_URL}/api/admin/payment-numbers`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          provider: newProvider,
+          number: newNumber,
+          display_order: parseInt(newOrder),
+          is_active: true
+        }),
       });
 
-      showToast('تم إضافة حساب الدفع بنجاح', 'success');
-      setShowAddForm(false);
-      setNewNumber('');
-      setNewOrder('1');
-      fetchNumbers(); // تحديث القوائم فوراً
-    } catch (err: any) {
-      showToast(err?.message || err?.error || 'فشل الحفظ، تأكد من صحة البيانات', 'error');
+      if (response.ok) {
+        showToast('تم إضافة الرقم بنجاح', 'success');
+        setShowAddForm(false);
+        setNewNumber('');
+        setNewOrder('1');
+        fetchNumbers();
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.message || 'فشل الحفظ، تأكد من البيانات', 'error');
+      }
+    } catch {
+      showToast('حدث خطأ أثناء الاتصال', 'error');
     } finally {
       setSaving(false);
     }
@@ -117,17 +113,25 @@ export default function PaymentNumbersPage() {
   const handleDelete = (id: number) => {
     setConfirmDialog({
       visible: true,
-      message: 'هل أنت متأكد من حذف حساب الدفع هذا؟ الإجراء نهائي.',
+      message: 'هل أنت متأكد من حذف هذا الرقم؟ لا يمكن التراجع عن هذا الإجراء.',
       onConfirm: async () => {
         setConfirmDialog(null);
         try {
-          // 🚀 الحذف عبر Axios
-          await api.delete(`/admin/payment-numbers/${id}`);
-          
-          showToast('تم حذف الحساب بنجاح', 'success');
-          fetchNumbers();
-        } catch (err: any) {
-          showToast(err?.message || err?.error || 'لا يمكن حذف حساب يمتلك سجل معاملات مالية', 'error');
+          const token = getToken();
+          const response = await fetch(`${API_URL}/api/admin/payment-numbers/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' },
+          });
+
+          if (response.ok) {
+            showToast('تم حذف الرقم بنجاح', 'success');
+            fetchNumbers();
+          } else {
+            const error = await response.json();
+            showToast(error.message || 'لا يمكن حذف رقم له سجل معاملات', 'error');
+          }
+        } catch {
+          showToast('خطأ في الاتصال', 'error');
         }
       }
     });
@@ -135,243 +139,161 @@ export default function PaymentNumbersPage() {
 
   const handleToggle = async (num: PaymentNumber) => {
     try {
-      // 🚀 التحديث الآمن
-      await api.patch(`/admin/payment-numbers/${num.id}`, { 
-        is_active: !num.isActive 
+      const token = getToken();
+      const response = await fetch(`${API_URL}/api/admin/payment-numbers/${num.id}`, {
+        method: 'PATCH',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ is_active: !num.is_active }),
       });
 
-      showToast('تم تحديث حالة الحساب بنجاح', 'success');
-      fetchNumbers();
-    } catch (err: any) {
-      showToast(err?.message || 'فشل تحديث حالة الحساب من الخادم', 'error');
+      if (response.ok) {
+        showToast('تم تحديث حالة الرقم', 'success');
+        fetchNumbers();
+      } else {
+        showToast('فشل تحديث الحالة من الخادم', 'error');
+      }
+    } catch {
+      showToast('فشل تحديث الحالة', 'error');
     }
   };
-
-  // 🚀 شاشة التحميل الأولية لمنع وميض الواجهة
-  if (isChecking || (loading && instapayNumbers.length === 0 && vodafoneNumbers.length === 0)) {
-    return (
-      <div className="admin-layout">
-        <AdminSidebar />
-        <div className="admin-content flex items-center justify-center min-h-[60vh]">
-          <div className="loading-state text-center flex flex-col items-center">
-            <div className="spinner spinner-primary spinner-lg mb-4 mx-auto" />
-            <p className="text-muted font-bold text-lg">جاري تحميل قنوات الدفع المتاحة...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="admin-layout relative">
       <AdminSidebar />
       
-      {/* 🚀 نافذة التأكيد المحسنة والاحترافية */}
       {confirmDialog && (
-        <div className="fixed inset-0 flex items-center justify-center z-[100] p-4 animate-fade-in" style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={() => setConfirmDialog(null)}>
-          <div className="card shadow-2xl max-w-sm w-full text-center p-8 animate-scale-up bg-white rounded-2xl border border-gray-100" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-center mb-5 text-error">
-              <AlertTriangleIcon size={56} />
+        <div className="fixed inset-0 flex items-center justify-center z-[100] p-4 animate-fade-in" style={{ backgroundColor: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(4px)' }}>
+          <div className="card shadow-2xl max-w-sm w-full text-center p-8">
+            <div className="flex justify-center mb-4 text-error">
+              <AlertTriangleIcon size={48} />
             </div>
-            <h3 className="text-2xl font-black text-gray-900 mb-4">تأكيد الحذف</h3>
-            <p className="text-gray-600 mb-8 leading-relaxed font-medium">{confirmDialog.message}</p>
+            <h3 className="text-xl font-bold text-error mb-4">تأكيد الحذف</h3>
+            <p className="text-muted mb-6 leading-relaxed">{confirmDialog.message}</p>
             <div className="flex gap-4 justify-center">
-              <button onClick={() => setConfirmDialog(null)} className="btn btn-outline flex-1 font-bold py-3 rounded-xl hover:bg-gray-50 border-gray-200">إلغاء</button>
-              <button onClick={confirmDialog.onConfirm} className="btn btn-danger flex-1 font-bold py-3 rounded-xl shadow-lg shadow-red-200">نعم، احذف</button>
+              <button onClick={() => setConfirmDialog(null)} className="btn btn-outline flex-1">إلغاء</button>
+              <button onClick={confirmDialog.onConfirm} className="btn btn-danger flex-1">نعم، احذف</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 🚀 نظام التنبيهات الموحد العائم */}
-      <div 
-        className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] transition-all duration-300" 
-        style={{ 
-          opacity: toast.visible ? 1 : 0, 
-          transform: toast.visible ? 'translate(-50%, 0)' : 'translate(-50%, -20px)', 
-          pointerEvents: toast.visible ? 'auto' : 'none' 
-        }}
-      >
-        <div className={`flex items-center gap-3 px-6 py-3.5 rounded-full shadow-2xl text-sm font-bold ${toast.type === 'success' ? 'bg-green-600 text-white shadow-green-600/30' : 'bg-red-600 text-white shadow-red-600/30'}`}>
+      <div className="toast-container" style={{ opacity: toast.visible ? 1 : 0, pointerEvents: toast.visible ? 'auto' : 'none' }}>
+        <div className={`toast-content ${toast.type === 'success' ? 'toast-success' : 'toast-error'}`}>
           {toast.type === 'success' ? <CheckCircleIcon size={20} /> : <AlertCircleIcon size={20} />}
-          <span>{toast.message}</span>
+          {toast.message}
         </div>
       </div>
 
       <main className="admin-content">
-        <div className="page-header flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div className="page-header">
           <div>
-            <h1 className="page-title text-3xl font-black text-gray-900 flex items-center gap-3">
-              <PhoneIcon size={32} className="text-primary" />
-              أرقام وحسابات الدفع
+            <h1 className="page-title">
+              <PhoneIcon size={28} />
+              أرقام الدفع
             </h1>
-            <p className="page-subtitle text-base mt-2">إدارة الحسابات البنكية ومحافظ الهاتف المتاحة لشحن رصيد الطلاب.</p>
+            <p className="page-subtitle">إدارة أرقام InstaPay و Vodafone Cash</p>
           </div>
-          <button 
-            onClick={() => setShowAddForm(!showAddForm)} 
-            className={`btn ${showAddForm ? 'btn-outline border-error text-error hover:bg-red-50' : 'btn-primary shadow-lg shadow-blue-200'} font-bold transition-all rounded-xl px-6 py-3 h-auto`}
-          >
-            {showAddForm ? <><XIcon size={18} /> إلغاء الإضافة</> : <><PlusIcon size={18} /> إضافة حساب جديد</>}
+          <button onClick={() => setShowAddForm(!showAddForm)} className="btn btn-primary">
+            {showAddForm ? <><XIcon size={16} /> إلغاء</> : <><PlusIcon size={16} /> إضافة رقم جديد</>}
           </button>
         </div>
 
-        {/* 🚀 نموذج إضافة حساب جديد */}
         {showAddForm && (
-          <div className="card mb-8 animate-fade-in border-2 border-primary/20 shadow-xl shadow-blue-50/50 p-6 bg-gradient-to-b from-blue-50/50 to-white rounded-2xl">
-            <h2 className="text-xl font-black mb-6 text-primary flex items-center gap-2 pb-4">
-              <PlusIcon size={22} className="text-success" /> 
-              إدراج قناة دفع جديدة
-            </h2>
-            <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-              <div className="form-group mb-0">
-                <label className="form-label font-bold text-gray-700 mb-2 block">مزود الخدمة</label>
-                <select 
-                  value={newProvider} 
-                  onChange={(e) => setNewProvider(e.target.value as any)} 
-                  className="input-field bg-white font-bold shadow-sm rounded-xl py-3 border-gray-200 w-full" 
-                  dir="rtl"
-                >
+          <div className="card mb-6 animate-fade-in border border-primary/20 shadow-lg">
+            <h2 className="card-title mb-5 text-primary flex items-center gap-2"><PlusIcon size={20} /> إضافة رقم دفع جديد</h2>
+            <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="form-group">
+                <label className="form-label">مزود الخدمة</label>
+                <select value={newProvider} onChange={(e) => setNewProvider(e.target.value as any)} className="input-field" dir="rtl">
                   <option value="instapay">إنستاباي (InstaPay)</option>
                   <option value="vodafone_cash">فودافون كاش (Vodafone Cash)</option>
                 </select>
               </div>
-              <div className="form-group mb-0">
-                <label className="form-label font-bold text-gray-700 mb-2 block">رقم الهاتف / المُعرّف (Username)</label>
-                <input 
-                  type="text" 
-                  value={newNumber} 
-                  // 🚀 تأمين الإدخال: إزالة أي مسافات لمنع الأخطاء أثناء نسخ الطالب للرقم
-                  onChange={(e) => setNewNumber(e.target.value.replace(/\s/g, ''))} 
-                  className="input-field bg-white font-mono text-lg font-bold shadow-sm rounded-xl py-3 border-gray-200 w-full" 
-                  placeholder={newProvider === 'instapay' ? 'user@instapay' : '01012345678'} 
-                  required 
-                  dir="ltr"
-                />
+              <div className="form-group">
+                <label className="form-label">رقم الدفع / المعرف</label>
+                <input type="text" value={newNumber} onChange={(e) => setNewNumber(e.target.value)} className="input-field" placeholder="01xxxxxxxxx أو معرف إنستاباي" required />
               </div>
-              <div className="form-group mb-0">
-                <label className="form-label font-bold text-gray-700 mb-2 block">ترتيب الظهور للطلاب (1, 2, 3..)</label>
-                <input 
-                  type="number" 
-                  value={newOrder} 
-                  // منع الحروف والمسافات
-                  onChange={(e) => setNewOrder(e.target.value.replace(/[^0-9]/g, ''))} 
-                  className="input-field bg-white font-bold text-lg shadow-sm rounded-xl py-3 border-gray-200 w-full text-center" 
-                  min="1" 
-                  required 
-                  dir="ltr"
-                />
+              <div className="form-group">
+                <label className="form-label">ترتيب العرض</label>
+                <input type="number" value={newOrder} onChange={(e) => setNewOrder(e.target.value)} className="input-field" min="1" required />
               </div>
-              <div className="col-span-full mt-2">
-                <button type="submit" disabled={saving} className="btn btn-success font-bold text-base px-10 py-3.5 rounded-xl shadow-lg shadow-green-200 w-full md:w-auto">
-                  {saving ? <span className="spinner spinner-light w-5 h-5 border-2 mx-auto" /> : 'حفظ وإضافة الحساب ✔️'}
+              <div className="col-span-full mt-4 flex gap-3">
+                <button type="submit" disabled={saving} className="btn btn-primary px-8">
+                  {saving ? 'جاري الحفظ...' : <><PlusIcon size={16} /> حفظ الرقم</>}
                 </button>
               </div>
             </form>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* قسم إنستاباي */}
-          <div className="card shadow-sm border border-gray-200 bg-white rounded-2xl h-full flex flex-col p-6">
-            <div className="flex justify-between items-center mb-6 pb-4">
-              <h2 className="text-2xl font-black flex items-center gap-3 text-gray-800">
-                <CreditCardIcon size={28} className="text-purple-600" />
-                حسابات إنستاباي
-              </h2>
-              <span className="badge font-bold px-4 py-1.5 rounded-lg text-sm" style={{ backgroundColor: 'rgba(147, 51, 234, 0.1)', color: '#9333ea' }}>
-                {instapayNumbers.length} حساب
-              </span>
-            </div>
-            
-            <div className="flex flex-col gap-4 flex-1">
-              {instapayNumbers.map(num => (
-                <div key={num.id} className="p-5 rounded-2xl border border-gray-200 bg-gray-50/50 hover:bg-white hover:border-purple-300 hover:shadow-md transition-all flex justify-between items-center gap-4 group">
-                  <div className="flex-1 overflow-hidden">
-                    <div className="font-bold text-xl text-gray-900 truncate text-left font-mono tracking-wide" dir="ltr">{num.number}</div>
-                    <div className="text-sm font-bold text-gray-500 mt-1.5 flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-gray-300 inline-block"></span> ترتيب العرض: {num.displayOrder}
+        {loading ? (
+          <div className="loading-state"><div className="spinner spinner-lg" /></div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="card">
+              <div className="flex justify-between items-center mb-6 pb-4 border-b">
+                <h2 className="card-title text-xl flex items-center gap-2">
+                  <CreditCardIcon size={20} />
+                  أرقام إنستاباي
+                </h2>
+                <span className="badge badge-primary">{instapayNumbers.length}</span>
+              </div>
+              <div className="flex flex-col gap-3">
+                {instapayNumbers.map(num => (
+                  <div key={num.id} className="p-4 rounded-xl border bg-gray-50 hover:border-primary/30 transition-colors flex justify-between items-center gap-4">
+                    <div className="flex-1 overflow-hidden">
+                      <div className="font-bold text-lg text-primary truncate text-left" dir="ltr">{num.number}</div>
+                      <div className="text-xs text-muted mt-1">الترتيب: {num.display_order}</div>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => handleToggle(num)} className={`btn btn-sm ${num.is_active ? 'btn-success' : 'btn-outline'}`}>
+                        {num.is_active ? <><CheckCircleIcon size={14} /> نشط</> : 'معطل'}
+                      </button>
+                      <button onClick={() => handleDelete(num.id)} className="btn btn-sm btn-danger" title="حذف"><TrashIcon size={14} /></button>
                     </div>
                   </div>
-                  <div className="flex gap-2 shrink-0">
-                    <button 
-                      onClick={() => handleToggle(num)} 
-                      className={`btn btn-sm font-bold rounded-lg px-4 ${num.isActive ? 'btn-success bg-green-50 text-green-700 hover:bg-green-100 border-none shadow-sm' : 'btn-outline bg-white text-gray-500 hover:bg-gray-50 border-gray-200 shadow-sm'}`}
-                    >
-                      {num.isActive ? <><CheckCircleIcon size={16} /> مُفعل</> : 'معطل'}
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(num.id)} 
-                      className="btn btn-sm btn-outline border-red-100 text-error bg-white hover:bg-red-50 hover:border-red-200 rounded-lg px-3 shadow-sm transition-colors" 
-                      title="حذف الحساب"
-                    >
-                      <TrashIcon size={18} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {instapayNumbers.length === 0 && (
-                <div className="flex flex-col items-center justify-center flex-1 py-12 text-muted bg-gray-50/50 rounded-2xl">
-                  <CreditCardIcon size={56} className="mb-4 text-gray-300" />
-                  <p className="font-bold text-gray-500">لا توجد حسابات إنستاباي مسجلة</p>
-                </div>
-              )}
+                ))}
+                {instapayNumbers.length === 0 && <p className="text-center text-muted p-4">لا توجد أرقام مسجلة</p>}
+              </div>
             </div>
-          </div>
 
-          {/* قسم فودافون كاش */}
-          <div className="card shadow-sm border border-gray-200 bg-white rounded-2xl h-full flex flex-col p-6">
-            <div className="flex justify-between items-center mb-6 pb-4">
-              <h2 className="text-2xl font-black flex items-center gap-3 text-gray-800">
-                <PhoneIcon size={28} className="text-red-600" />
-                محافظ فودافون كاش
-              </h2>
-              <span className="badge font-bold px-4 py-1.5 rounded-lg text-sm" style={{ backgroundColor: 'rgba(220, 38, 38, 0.1)', color: '#dc2626' }}>
-                {vodafoneNumbers.length} محفظة
-              </span>
-            </div>
-            
-            <div className="flex flex-col gap-4 flex-1">
-              {vodafoneNumbers.map(num => (
-                <div key={num.id} className="p-5 rounded-2xl border border-gray-200 bg-gray-50/50 hover:bg-white hover:border-red-300 hover:shadow-md transition-all flex justify-between items-center gap-4 group">
-                  <div className="flex-1 overflow-hidden">
-                    <div className="font-bold text-xl text-red-600 tracking-widest truncate text-left font-mono" dir="ltr">{num.number}</div>
-                    <div className="text-sm font-bold text-gray-500 mt-1.5 flex items-center gap-2">
-                       <span className="w-2 h-2 rounded-full bg-gray-300 inline-block"></span> ترتيب العرض: {num.displayOrder}
+            <div className="card">
+              <div className="flex justify-between items-center mb-6 pb-4 border-b">
+                <h2 className="card-title text-xl flex items-center gap-2">
+                  <PhoneIcon size={20} />
+                  فودافون كاش
+                </h2>
+                <span className="badge badge-success">{vodafoneNumbers.length}</span>
+              </div>
+              <div className="flex flex-col gap-3">
+                {vodafoneNumbers.map(num => (
+                  <div key={num.id} className="p-4 rounded-xl border bg-gray-50 hover:border-success/30 transition-colors flex justify-between items-center gap-4">
+                    <div className="flex-1 overflow-hidden">
+                      <div className="font-bold text-lg text-success tracking-wider truncate text-left" dir="ltr">{num.number}</div>
+                      <div className="text-xs text-muted mt-1">الترتيب: {num.display_order}</div>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button onClick={() => handleToggle(num)} className={`btn btn-sm ${num.is_active ? 'btn-success' : 'btn-outline'}`}>
+                        {num.is_active ? <><CheckCircleIcon size={14} /> نشط</> : 'معطل'}
+                      </button>
+                      <button onClick={() => handleDelete(num.id)} className="btn btn-sm btn-danger" title="حذف"><TrashIcon size={14} /></button>
                     </div>
                   </div>
-                  <div className="flex gap-2 shrink-0">
-                    <button 
-                      onClick={() => handleToggle(num)} 
-                      className={`btn btn-sm font-bold rounded-lg px-4 ${num.isActive ? 'btn-success bg-green-50 text-green-700 hover:bg-green-100 border-none shadow-sm' : 'btn-outline bg-white text-gray-500 hover:bg-gray-50 border-gray-200 shadow-sm'}`}
-                    >
-                      {num.isActive ? <><CheckCircleIcon size={16} /> مُفعل</> : 'معطل'}
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(num.id)} 
-                      className="btn btn-sm btn-outline border-red-100 text-error bg-white hover:bg-red-50 hover:border-red-200 rounded-lg px-3 shadow-sm transition-colors" 
-                      title="حذف المحفظة"
-                    >
-                      <TrashIcon size={18} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {vodafoneNumbers.length === 0 && (
-                <div className="flex flex-col items-center justify-center flex-1 py-12 text-muted bg-gray-50/50 rounded-2xl">
-                  <PhoneIcon size={56} className="mb-4 text-gray-300" />
-                  <p className="font-bold text-gray-500">لا توجد محافظ فودافون كاش مسجلة</p>
-                </div>
-              )}
+                ))}
+                {vodafoneNumbers.length === 0 && <p className="text-center text-muted p-4">لا توجد أرقام مسجلة</p>}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </main>
 
       <style jsx>{`
         .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
-        .animate-scale-up { animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes scaleUp { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
       `}</style>
     </div>
   );

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Responses\ApiResponse;
 use App\Models\WalletTopupRequest;
+use App\Services\BackblazeStorageService;
 use App\Services\NotificationService;
 use App\Services\WalletService;
 use Illuminate\Http\JsonResponse;
@@ -207,6 +208,15 @@ class AdminWalletController extends Controller
 
     private function formatRequest(WalletTopupRequest $req): array
     {
+        // SEC-MAJOR-02: re-sign the proof image URL per-request (10-minute
+        // lifetime) so an admin viewing the dashboard always gets a fresh
+        // signed URL. The DB stores the storage key, not a URL.
+        $proofImageUrl = null;
+        if (! empty($req->proof_image_url)) {
+            $proofImageUrl = app(BackblazeStorageService::class)
+                ->getSignedUrl($req->proof_image_url, 600);
+        }
+
         return [
             'id' => $req->id,
             'amount' => $req->amount,
@@ -215,7 +225,7 @@ class AdminWalletController extends Controller
             'paymentMethod' => $req->payment_method,
             'status' => $req->status,
             'adminNotes' => $req->admin_notes,
-            'proofImageUrl' => $req->proof_image_url,
+            'proofImageUrl' => $proofImageUrl,
             'createdAt' => $req->created_at->format('Y-m-d H:i:s'),
             'reviewedAt' => $req->reviewed_at?->format('Y-m-d H:i:s'),
             'student' => [

@@ -4,9 +4,6 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, ReactNode } from 'react';
 import AdminSidebar from '../components/AdminSidebar';
 import StatCard from '../components/StatCard';
-import { useAuthGuard } from '../hooks/useAuthGuard'; // 🚀 حارس البوابة المركزي
-import { useAuthStore } from '@/store/useAuthStore'; // 🚀 العقل المدبر
-import api from '@/lib/axios'; // 🚀 عميل الشبكة المركزي
 import {
   UsersIcon,
   WalletIcon,
@@ -23,6 +20,12 @@ import {
   PhoneIcon,
   CheckCircleIcon,
 } from '../components/Icons';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+const getToken = () => {
+  return document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] || localStorage.getItem('token');
+};
 
 interface Stats {
   pendingStudents: number;
@@ -55,76 +58,152 @@ interface QuickAction {
 
 export default function AdminDashboard() {
   const router = useRouter();
-  
-  // 🚀 السطر السحري: يحمي الصفحة، يطرد الطلاب، ويجلب بيانات الأدمن!
-  const { isChecking } = useAuthGuard(['admin']); 
-  const { logout } = useAuthStore(); // دالة تسجيل الخروج الجاهزة
-
-  const [stats, setStats] = useState<Stats>({ pendingStudents: 0, pendingTopups: 0, totalViolations: 0 });
+  const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
+  const [stats, setStats] = useState<Stats>({
+    pendingStudents: 0,
+    pendingTopups: 0,
+    totalViolations: 0,
+  });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [limitsInfo, setLimitsInfo] = useState<LimitInfo | null>(null);
 
   useEffect(() => {
-    // لا نجلب الإحصائيات إلا إذا تم التأكد من هوية الأدمن
-    if (!isChecking) {
-      fetchDashboardData();
-    }
-  }, [isChecking]);
+    checkAdminAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const fetchDashboardData = async () => {
+  const checkAdminAuth = async () => {
     try {
-      // 🚀 الأداء الخارق: جلب 4 مسارات في نفس اللحظة بالتوازي (Parallel Requests)
-      const [pendingRes, topupsRes, violationsRes, limitsRes] = await Promise.allSettled([
-        api.get('/admin/users/pending?limit=1'), // نرسل limit=1 لأننا نريد العدد (Total) فقط لتقليل الحمل
-        api.get('/admin/wallet/topups?status=pending&limit=1'),
-        api.get('/admin/security/violations?limit=1'),
-        api.get('/admin/limits')
-      ]);
+      const token = getToken();
 
-      // دالة مساعدة ذكية لاستخراج العدد سواء كان في الـ meta (Pagination) أو مجرد array length
-      const getCount = (res: any) => res?.value?.meta?.total || res?.value?.data?.length || 0;
+      if (!token) {
+        router.push('/login');
+        return;
+      }
 
-      const pendingCount = pendingRes.status === 'fulfilled' ? getCount(pendingRes) : 0;
-      const topupsCount = topupsRes.status === 'fulfilled' ? getCount(topupsRes) : 0;
-      const violationsCount = violationsRes.status === 'fulfilled' ? getCount(violationsRes) : 0;
-
-      setStats({
-        pendingStudents: pendingCount,
-        pendingTopups: topupsCount,
-        totalViolations: violationsCount,
+      const response = await fetch(`${API_URL}/api/auth/me`, {
+        headers: { 
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json'
+        },
       });
 
-      // بناء سجل النشاطات ديناميكياً
-      const newActivity: RecentActivity[] = [];
-      if (pendingCount > 0) {
-        newActivity.push({ type: 'warning', message: `${pendingCount} طلب تسجيل جديد في الانتظار`, time: 'الآن' });
-      }
-      if (topupsCount > 0) {
-        newActivity.push({ type: 'info', message: `${topupsCount} طلب شحن في انتظار المراجعة`, time: 'الآن' });
-      }
-      setRecentActivity(newActivity);
+      if (response.ok) {
+        const data = await response.json();
+        const user = data.data?.user || data.data || data; 
 
-      if (limitsRes.status === 'fulfilled' && limitsRes.value?.data) {
-        setLimitsInfo(limitsRes.value.data);
+        const isAdmin = 
+          user?.is_admin === true || 
+          user?.is_admin === 1 || 
+          user?.isAdmin === true || 
+          user?.role === 'admin' ||
+          user?.email === 'admin@eduplatform.com';
+        
+        if (!isAdmin) {
+          router.push('/');
+          return;
+        }
+        
+        setAuthorized(true);
+        fetchStats(token);
+      } else {
+        router.push('/login');
+      }
+    } catch {
+      router.push('/login');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchStats = async (authToken: string) => {
+    try {
+      const pendingResponse = await fetch(`${API_URL}/api/admin/users/pending`, {
+        headers: { Authorization: `Bearer ${authToken}`, Accept: 'application/json' },
+      });
+      if (pendingResponse.ok) {
+        const data = await pendingResponse.json();
+        const pendingCount = data.data?.length || 0;
+        setStats(prev => ({ ...prev, pendingStudents: pendingCount }));
+        
+        if (pendingCount > 0) {
+          setRecentActivity(prev => [{
+            type: 'warning',
+            message: `${pendingCount} طلب تسجيل جديد في الانتظار`,
+            time: 'الآن'
+          }, ...prev].slice(0, 5));
+        }
       }
 
+      const topupsResponse = await fetch(`${API_URL}/api/admin/wallet/topups?status=pending`, {
+        headers: { Authorization: `Bearer ${authToken}`, Accept: 'application/json' },
+      });
+      if (topupsResponse.ok) {
+        const data = await topupsResponse.json();
+        const topupsCount = data.data?.length || 0;
+        setStats(prev => ({ ...prev, pendingTopups: topupsCount }));
+        
+        if (topupsCount > 0) {
+          setRecentActivity(prev => [{
+            type: 'info',
+            message: `${topupsCount} طلب شحن في انتظار المراجعة`,
+            time: 'الآن'
+          }, ...prev].slice(0, 5));
+        }
+      }
+
+      const violationsResponse = await fetch(`${API_URL}/api/admin/security/violations`, {
+        headers: { Authorization: `Bearer ${authToken}`, Accept: 'application/json' },
+      });
+      if (violationsResponse.ok) {
+        const data = await violationsResponse.json();
+        const violationsCount = data.data?.length || 0;
+        setStats(prev => ({ ...prev, totalViolations: violationsCount }));
+      }
+
+      const limitsResponse = await fetch(`${API_URL}/api/admin/limits`, {
+        headers: { Authorization: `Bearer ${authToken}`, Accept: 'application/json' },
+      });
+      if (limitsResponse.ok) {
+        const data = await limitsResponse.json();
+        if (data.success && data.data) {
+          setLimitsInfo(data.data);
+        }
+      }
     } catch (error) {
-      console.error('Failed to fetch dashboard stats:', error);
+      console.error('Failed to fetch stats:', error);
     }
   };
 
   const handleLogout = async () => {
-    await logout(); // 🚀 ينظف الكوكيز والـ API في الخلفية
-    router.push('/login');
+    try {
+      const token = getToken();
+      if (token) {
+        await fetch(`${API_URL}/api/auth/logout`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+    } catch {
+      // Ignore logout errors
+    } finally {
+      document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      localStorage.removeItem('token');
+      router.push('/login');
+    }
   };
 
-  // 🚀 شاشة التحميل (تظهر للحظة أثناء تأكد الـ Guard من الصلاحيات)
-  if (isChecking) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
         <div className="spinner spinner-lg"></div>
       </div>
     );
+  }
+
+  if (!authorized) {
+    return null;
   }
 
   const quickActions: QuickAction[] = [
@@ -217,7 +296,7 @@ export default function AdminDashboard() {
           <div className="page-header">
             <div>
               <h1 className="page-title">لوحة التحكم</h1>
-              <p className="page-subtitle">مرحباً بك في غرفة عمليات المنصة</p>
+              <p className="page-subtitle">مرحباً بك في منصاتك التعليمية</p>
             </div>
             <div className="flex gap-3">
               <button

@@ -3,18 +3,26 @@
 namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
+use App\Http\Responses\ApiResponse;
 use App\Models\ComprehensiveExam;
 use App\Models\ComprehensiveExamQuestion;
 use App\Models\ComprehensiveExamPurchase;
 use App\Models\ComprehensiveExamAttempt;
 use App\Models\ComprehensiveExamAnswer;
 // use App\Models\User;
+use App\Services\WalletService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class ComprehensiveExamController extends Controller
 {
+    public function __construct(
+        private WalletService $walletService
+    ) {
+    }
+
     /**
      * 1. استعراض الكتالوج (جلب الاختبارات المتاحة للطالب)
      */
@@ -59,7 +67,7 @@ class ComprehensiveExamController extends Controller
             ];
         });
 
-        return response()->json(['data' => $mappedExams]);
+        return ApiResponse::success($mappedExams, 'تم جلب الاختبارات المتاحة بنجاح');
     }
 
     /**
@@ -75,51 +83,94 @@ class ComprehensiveExamController extends Controller
         $hasPurchased = ComprehensiveExamPurchase::where('user_id', $user->id)->where('comprehensive_exam_id', $exam->id)->exists();
 
         if ($isEnrolled || $hasPurchased || $exam->price_points == 0) {
-            return response()->json(['message' => 'أنت تمتلك هذا الاختبار بالفعل.'], 400);
+            return ApiResponse::error('أنت تمتلك هذا الاختبار بالفعل.', 'ERR_EXAM_ALREADY_OWNED', 400);
         }
 
         if ($exam->accessibility === 'enrolled_only') {
-            return response()->json(['message' => 'هذا الاختبار متاح فقط للطلاب المشتركين في الكورس المرفق به.'], 403);
+            return ApiResponse::error('هذا الاختبار متاح فقط للطلاب المشتركين في الكورس المرفق به.', 'ERR_EXAM_ENROLLED_ONLY', 403);
         }
 
-        // بدء عملية خصم الرصيد بأمان (Database Transaction)
+        // رقم مرجعي مستقر يضمن Idempotency (نفس الطالب + نفس الاختبار ينتج نفس الـ reference)
+        $reference = "EXM-{$exam->id}-U{$user->id}-" . now()->timestamp;
+
+        // حماية مزدوجة: إذا وصل طلبان متزامنان، ثاني طلب سيُعتبر مكرراً ولن يخصم مرتين
+        $existingPurchase = ComprehensiveExamPurchase::where('user_id', $user->id)
+            ->where('comprehensive_exam_id', $exam->id)
+            ->first();
+
+        if ($existingPurchase) {
+            return ApiResponse::success(
+                ['already_owned' => true],
+                'أنت تمتلك هذا الاختبار بالفعل.'
+            );
+        }
+
+        // ✅ العملية بأكملها في معاملة واحدة مغلقة: خصم المحفظة + تسجيل الشراء + تسجيل الحركة المالية
         try {
-            DB::beginTransaction();
+            $walletTransaction = DB::transaction(function () use ($user, $exam, $reference) {
+                // قفل سجل المستخدم لمنع السباق (Race Conditions)
+                $lockedUser = \App\Models\User::where('id', $user->id)->lockForUpdate()->first();
 
-            // Locking for update لمنع الشراء المزدوج (Race Conditions)
-            $lockedUser = DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
+                if (!$lockedUser) {
+                    throw new \RuntimeException('المستخدم غير موجود.', 404);
+                }
 
-            if ($lockedUser->wallet_balance < $exam->price_points) {
-                DB::rollBack();
-                return response()->json(['message' => 'رصيد محفظتك غير كافٍ لإتمام عملية الشراء.'], 402);
-            }
+                if ($lockedUser->wallet_balance < $exam->price_points) {
+                    throw new \RuntimeException('رصيد محفظتك غير كافٍ لإتمام عملية الشراء.', 402);
+                }
 
-            // خصم الرصيد
-            DB::table('users')->where('id', $user->id)->decrement('wallet_balance', $exam->price_points);
+                // ✅ خصم الرصيد + تسجيل WalletTransaction موثّق ومتسق مع باقي المنصة
+                $tx = $this->walletService->deduct(
+                    $lockedUser,
+                    $exam->price_points,
+                    "شراء اختبار شامل: {$exam->title}",
+                    $reference,
+                    [
+                        'comprehensive_exam_id' => $exam->id,
+                        'exam_title' => $exam->title,
+                    ]
+                );
 
-            // تسجيل عملية الشراء
-            ComprehensiveExamPurchase::create([
-                'user_id' => $user->id,
+                // ✅ تسجيل الشراء (مع توثيق الرقم المرجعي المالي لربط التدقيق)
+                ComprehensiveExamPurchase::create([
+                    'user_id' => $user->id,
+                    'comprehensive_exam_id' => $exam->id,
+                    'amount_paid' => $exam->price_points,
+                ]);
+
+                Log::info('Comprehensive exam purchased', [
+                    'user_id' => $lockedUser->id,
+                    'comprehensive_exam_id' => $exam->id,
+                    'amount' => $exam->price_points,
+                    'wallet_transaction_id' => $tx->id,
+                    'reference' => $reference,
+                ]);
+
+                return $tx;
+            }, 3);
+
+            return ApiResponse::success([
                 'comprehensive_exam_id' => $exam->id,
                 'amount_paid' => $exam->price_points,
-            ]);
-
-            // إضافة سجل مالي (Ledger) للشفافية
-            DB::table('transactions')->insert([
-                'user_id' => $user->id,
-                'type' => 'purchase',
-                'amount' => $exam->price_points,
-                'description' => "شراء اختبار شامل: " . $exam->title,
-                'reference' => 'EXM-' . uniqid(),
-                'created_at' => now(),
-            ]);
-
-            DB::commit();
-
-            return response()->json(['message' => 'تم شراء الاختبار بنجاح، يمكنك الآن البدء في حله.']);
+                'new_balance' => $user->fresh()->wallet_balance,
+                'wallet_transaction_id' => $walletTransaction->id,
+            ], 'تم شراء الاختبار بنجاح، يمكنك الآن البدء في حله.', 201);
+        } catch (\RuntimeException $e) {
+            $code = (int) $e->getCode();
+            $statusCode = ($code >= 400 && $code < 500) ? $code : 500;
+            $errorCode = match (true) {
+                $code === 402 => 'ERR_INSUFFICIENT_BALANCE',
+                $code === 404 => 'ERR_USER_NOT_FOUND',
+                default => 'ERR_PURCHASE_FAILED',
+            };
+            return ApiResponse::error($e->getMessage(), $errorCode, $statusCode);
         } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['message' => 'حدث خطأ أثناء معالجة الدفع.'], 500);
+            Log::error('Comprehensive exam purchase failed', [
+                'user_id' => $user->id,
+                'comprehensive_exam_id' => $exam->id,
+                'error' => $e->getMessage(),
+            ]);
+            return ApiResponse::error('حدث خطأ أثناء معالجة الدفع.', 'ERR_PURCHASE_FAILED', 500);
         }
     }
 
@@ -137,10 +188,10 @@ class ComprehensiveExamController extends Controller
         // 2. التحقق من بوابات الزمن (Time Windows)
         $now = Carbon::now();
         if ($now->isBefore($exam->start_time)) {
-            return response()->json(['message' => 'لم يبدأ وقت هذا الاختبار بعد.'], 403);
+            return ApiResponse::error('لم يبدأ وقت هذا الاختبار بعد.', 'ERR_EXAM_NOT_STARTED', 403);
         }
         if ($now->isAfter($exam->end_time)) {
-            return response()->json(['message' => 'لقد انتهى الوقت المخصص لهذا الاختبار.'], 403);
+            return ApiResponse::error('لقد انتهى الوقت المخصص لهذا الاختبار.', 'ERR_EXAM_ENDED', 403);
         }
 
         // 3. التحقق من عدد المحاولات (Attempts Limit)
@@ -155,7 +206,7 @@ class ComprehensiveExamController extends Controller
             ->first();
 
         if (!$ongoingAttempt && $attemptsCount >= $exam->max_attempts) {
-            return response()->json(['message' => 'لقد استنفدت الحد الأقصى للمحاولات المسموحة.'], 403);
+            return ApiResponse::error('لقد استنفدت الحد الأقصى للمحاولات المسموحة.', 'ERR_EXAM_MAX_ATTEMPTS', 403);
         }
 
         // إنشاء محاولة جديدة إذا لم تكن هناك محاولة جارية
@@ -211,7 +262,7 @@ class ComprehensiveExamController extends Controller
             ];
         });
 
-        return response()->json([
+        return ApiResponse::success([
             'attempt_id' => $ongoingAttempt->id,
             'exam' => [
                 'title' => $exam->title,
@@ -220,7 +271,7 @@ class ComprehensiveExamController extends Controller
                 'end_time_absolute' => $exam->end_time, // للإغلاق الإجباري
             ],
             'questions' => $formattedQuestions
-        ]);
+        ], 'تم بدء الاختبار بنجاح');
     }
 
     /**
@@ -233,7 +284,7 @@ class ComprehensiveExamController extends Controller
         $attempt = ComprehensiveExamAttempt::where('id', $attemptId)->where('user_id', $user->id)->firstOrFail();
 
         if ($attempt->is_completed) {
-            return response()->json(['message' => 'تم تسليم هذه المحاولة مسبقاً.'], 400);
+            return ApiResponse::error('تم تسليم هذه المحاولة مسبقاً.', 'ERR_ATTEMPT_ALREADY_SUBMITTED', 400);
         }
 
         $now = Carbon::now();
@@ -245,8 +296,12 @@ class ComprehensiveExamController extends Controller
 
         $questions = ComprehensiveExamQuestion::where('comprehensive_exam_id', $exam->id)->get()->keyBy('id');
 
-        DB::beginTransaction();
         try {
+            $gradingResult = DB::transaction(function () use ($studentAnswers, $questions, $attempt, $now, $exam) {
+            $earnedPoints = 0;
+            $totalPoints = 0;
+            $hasEssay = false;
+
             foreach ($studentAnswers as $ans) {
                 $question = $questions->get($ans['question_id']);
                 if (!$question)
@@ -306,34 +361,40 @@ class ComprehensiveExamController extends Controller
                 'status' => $attemptStatus
             ]);
 
-            DB::commit();
-
-            // الرد الذكي: إذا كان تأجيل النتيجة مفعلاً، لا ترسل الدرجة!
-            if ($exam->delay_results && $now->isBefore($exam->end_time)) {
-                return response()->json([
-                    'message' => 'تم تسليم الإجابات بنجاح. سيتم إعلان النتيجة بعد انتهاء وقت الاختبار بالكامل.',
-                    'status' => 'delayed'
-                ]);
-            }
-
-            if ($hasEssay) {
-                return response()->json([
-                    'message' => 'تم التسليم. نتيجتك معلقة بانتظار تصحيح المعلم للأسئلة المقالية.',
-                    'status' => 'needs_review'
-                ]);
-            }
-
-            return response()->json([
-                'message' => 'تم تسليم الاختبار.',
+            return [
                 'score' => $scorePercentage,
                 'is_passed' => $isPassed,
-                'status' => 'graded'
-            ]);
-
+                'has_essay' => $hasEssay,
+            ];
+        }, 3);
         } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['message' => 'حدث خطأ أثناء حفظ الإجابات.'], 500);
+            Log::error('Comprehensive exam submission failed', [
+                'user_id' => $user->id,
+                'comprehensive_exam_id' => $exam->id,
+                'attempt_id' => $attempt->id,
+                'error' => $e->getMessage(),
+            ]);
+            return ApiResponse::error('حدث خطأ أثناء حفظ الإجابات.', 'ERR_SUBMIT_FAILED', 500);
         }
+
+        // الرد الذكي: إذا كان تأجيل النتيجة مفعلاً، لا ترسل الدرجة!
+        if ($exam->delay_results && $now->isBefore($exam->end_time)) {
+            return ApiResponse::success([
+                'status' => 'delayed',
+            ], 'تم تسليم الإجابات بنجاح. سيتم إعلان النتيجة بعد انتهاء وقت الاختبار بالكامل.');
+        }
+
+        if ($gradingResult['has_essay']) {
+            return ApiResponse::success([
+                'status' => 'needs_review',
+            ], 'تم التسليم. نتيجتك معلقة بانتظار تصحيح المعلم للأسئلة المقالية.');
+        }
+
+        return ApiResponse::success([
+            'score' => $gradingResult['score'],
+            'is_passed' => $gradingResult['is_passed'],
+            'status' => 'graded',
+        ], 'تم تسليم الاختبار.');
     }
 
     /**

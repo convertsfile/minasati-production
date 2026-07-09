@@ -1,17 +1,21 @@
-// app/lectures/[id]/page.tsx
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Navbar from '@/app/components/Navbar';
-import { useAuthGuard } from '@/app/hooks/useAuthGuard';
+import Navbar from '../../components/Navbar';
+import { useAuthGuard } from '../../hooks/useAuthGuard';
 import SecureVideoPlayer from '@/components/SecureVideoPlayer';
-import api from '@/lib/axios'; // 🚀 الاعتماد الكلي على Axios
 import {
   ArrowRightIcon, ArrowLeftIcon, BookIcon, FileTextIcon,
   ShieldIcon, CheckIcon, AlertTriangleIcon, LockIcon,
-  MonitorIcon, UploadIcon, DownloadIcon, CheckCircleIcon
-} from '@/app/components/Icons';
+  MonitorIcon, UploadIcon, DownloadIcon
+} from '../../components/Icons';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+const getToken = () => {
+  return document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] || localStorage.getItem('token');
+};
 
 interface Lecture {
   id: number;
@@ -43,17 +47,14 @@ export default function LecturePage() {
   const [courseLectures, setCourseLectures] = useState<CourseLecture[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
   const [violationCount, setViolationCount] = useState(0);
   const [token, setToken] = useState<string>('');
-  
-  const [streamId] = useState(() => Math.random().toString(36).substring(2, 15) + Date.now().toString(36));
-  
   const [initialTime, setInitialTime] = useState<number>(0);
   const [isLectureCompleted, setIsLectureCompleted] = useState<boolean>(false);
   const [viewsCount, setViewsCount] = useState<number>(0);
   const [maxViews, setMaxViews] = useState<number | null>(null);
   
+  // Homework state
   const [homeworkData, setHomeworkData] = useState<any>(null);
   const [submittingHomework, setSubmittingHomework] = useState(false);
   const [homeworkError, setHomeworkError] = useState('');
@@ -61,43 +62,74 @@ export default function LecturePage() {
   const lastSyncTimeRef = useRef<number>(0);
   const latestProgressRef = useRef<{time: number, duration: number} | null>(null);
 
-  // تحديث التقدم عند مغادرة الصفحة
   useEffect(() => {
     return () => {
-      if (latestProgressRef.current) {
+      if (latestProgressRef.current && token) {
         const { time, duration } = latestProgressRef.current;
-        api.post(`/lectures/${lectureId}/progress`, { 
-          watch_time: time, 
-          total_duration: duration, 
-          stream_id: streamId 
-        }).catch(() => {});
+        fetch(`${API_URL}/api/lectures/${lectureId}/progress`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: JSON.stringify({ watch_time: time, total_duration: duration }),
+          keepalive: true
+        }).catch(console.error);
       }
     };
-  }, [lectureId, streamId]);
+  }, [token, lectureId]);
 
   useEffect(() => {
-    // 🚀 استخراج التوكن لتمريره إلى مشغل الفيديو الذي يعتمد على XHR داخلي
-    const currentToken = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1] || localStorage.getItem('token');
-    
+    const currentToken = getToken();
+
     if (!currentToken) {
       router.push('/login');
       return;
     }
+
     setToken(currentToken);
 
-    const loadData = async () => {
+    const checkPendingStatus = async () => {
       try {
-        // 🚀 كل الاستدعاءات أصبحت بـ Axios بدون إضافة /api وبدون Header يدوي
-        const courseId = await fetchLectureDetails();
-        const promises = [
-          fetchViolationCount(),
-          fetchProgress(),
-          fetchLecturePlayback(),
-          fetchHomeworkStatus()
+        const statusRes = await fetch(`${API_URL}/api/auth/status`, {
+          headers: { Authorization: `Bearer ${currentToken}`, Accept: 'application/json' },
+        });
+        if (statusRes.status === 401) {
+          document.cookie = "token=; Max-Age=0";
+          localStorage.removeItem('token');
+          router.replace('/login');
+          return true;
+        }
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          if (statusData.data?.status === 'pending') {
+            router.replace('/waiting-room');
+            return true;
+          }
+        }
+      } catch (e) {
+        console.error('Status check failed:', e);
+      }
+      return false;
+    };
+
+    const loadData = async () => {
+      const isPending = await checkPendingStatus();
+      if (isPending) return;
+
+      try {
+        const courseId = await fetchLectureDetails(currentToken);
+
+        const promises: Promise<any>[] = [
+          fetchViolationCount(currentToken),
+          fetchProgress(currentToken),
+          fetchLecturePlayback(currentToken),
+          fetchHomeworkStatus(currentToken)
         ];
 
         if (courseId) {
-          promises.push(fetchCourseLectures(courseId));
+          promises.push(fetchCourseLectures(currentToken, courseId));
         }
 
         await Promise.all(promises);
@@ -108,82 +140,167 @@ export default function LecturePage() {
       }
     };
 
-    if (!isChecking) loadData();
+    loadData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lectureId, isChecking]);
+  }, [lectureId]);
 
-  const fetchProgress = async () => {
+  const fetchProgress = async (authToken: string) => {
     try {
-      const response = await api.get(`/lectures/${lectureId}/progress`);
-      const data = response.data?.data || response.data;
-      setInitialTime(data?.watchTime ?? data?.watch_time ?? 0);
-      setIsLectureCompleted(data?.isCompleted ?? data?.is_completed ?? false);
-      setViewsCount(data?.viewsCount ?? data?.views_count ?? 0);
-      setMaxViews(data?.maxViews ?? data?.max_views ?? null);
-    } catch (error) {}
-  };
-
-  const fetchLecturePlayback = async () => {
-    try {
-      const response = await api.get(`/video/playback/${lectureId}`);
-      const data = response.data;
-      setPlayback({
-        url: data.data?.playbackUrl || data.playbackUrl || data.playback_url,
-        watermark: data.data?.watermark || data.watermark
+      const response = await fetch(`${API_URL}/api/lectures/${lectureId}/progress`, {
+        headers: { Authorization: `Bearer ${authToken}`, Accept: 'application/json' },
       });
-    } catch (error: any) {
-      if (error.response?.status === 401) router.replace('/login');
-      else setError(error.response?.data?.message || error.response?.data?.error || 'الفيديو غير متاح أو قيد المعالجة.');
+      if (response.ok) {
+        const res = await response.json();
+        const data = res.data || res;
+        setInitialTime(data.watch_time || data.watchTime || 0);
+        setIsLectureCompleted(data.is_completed || data.isCompleted || false);
+        setViewsCount(data.views_count || 0);
+        setMaxViews(data.max_views || null);
+      }
+    } catch (error) {
+      console.error('Failed to fetch progress:', error);
     }
   };
 
-  const fetchLectureDetails = async () => {
-     try {
-      const response = await api.get(`/lectures/${lectureId}`);
-      const data = response.data?.data || response.data;
-      const extractedCourseId = data.courseId || data.course_id || data.course?.id;
-      setLecture({
-        id: data.id,
-        title: data.title,
-        description: data.description,
-        courseId: extractedCourseId,
+  const fetchLecturePlayback = async (authToken: string) => {
+    try {
+      const response = await fetch(`${API_URL}/api/video/playback/${lectureId}`, {
+        headers: { Authorization: `Bearer ${authToken}`, Accept: 'application/json' },
       });
-      return extractedCourseId;
-    } catch (error) {}
+
+      if (response.status === 401) {
+        document.cookie = "token=; Max-Age=0";
+        localStorage.removeItem('token');
+        router.replace('/login');
+        return;
+      }
+      if (response.status === 403) {
+        router.replace('/dashboard');
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        setPlayback({
+          url: data.playback_url || data.playbackUrl,
+          watermark: data.watermark
+        });
+      } else {
+        let errorMsg = 'الفيديو غير متاح أو قيد المعالجة حالياً.';
+        try {
+            const errorData = await response.json();
+            errorMsg = errorData.message || errorData.error || errorMsg;
+        } catch (e) {
+            if (response.status === 403) {
+                errorMsg = 'غير مصرح لك بمشاهدة هذا الفيديو. يرجى التأكد من اشتراكك في الكورس.';
+            }
+        }
+        setError(errorMsg);
+      }
+    } catch (error) {
+      console.error('Failed to fetch lecture playback:', error);
+      setError('حدث خطأ أثناء الاتصال بالخادم. يرجى المحاولة لاحقاً.');
+    }
+  };
+
+  const fetchLectureDetails = async (authToken: string) => {
+     try {
+      const response = await fetch(`${API_URL}/api/lectures/${lectureId}`, {
+        headers: { Authorization: `Bearer ${authToken}`, Accept: 'application/json' },
+      });
+
+      if (response.status === 401) {
+        document.cookie = "token=; Max-Age=0";
+        localStorage.removeItem('token');
+        router.replace('/login');
+        return null;
+      }
+      if (response.status === 403) {
+        router.replace('/dashboard');
+        return null;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        const d = data.data || data;
+
+        const extractedCourseId = d.course_id || d.courseId || d.course?.id;
+
+        setLecture({
+          id: d.id,
+          title: d.title,
+          description: d.description,
+          courseId: extractedCourseId,
+        });
+        return extractedCourseId;
+      }
+    } catch (error) {
+      console.error('Failed to fetch lecture details:', error);
+    }
     return null;
   };
 
-  const fetchViolationCount = async () => {
+  const fetchViolationCount = async (authToken: string) => {
     try {
-      const response = await api.get(`/violations/count`);
-      const data = response.data?.data || response.data;
-      setViolationCount(data?.fatalStrikes ?? data?.fatal_strikes ?? 0);
-    } catch (error) {}
+      const response = await fetch(`${API_URL}/api/violations/count`, {
+        headers: { Authorization: `Bearer ${authToken}`, Accept: 'application/json' },
+      });
+
+      if (response.ok) {
+        const res = await response.json();
+        const data = res.data || res;
+        setViolationCount(data.fatalStrikes || data.fatal_strikes || 0);
+      }
+    } catch (error) {
+      console.error('Failed to fetch violation count:', error);
+    }
   };
 
-  const fetchCourseLectures = async (courseId: number | string) => {
+  const fetchCourseLectures = async (authToken: string, courseId: number | string) => {
     try {
-      const response = await api.get(`/courses/${courseId}`);
-      const data = response.data?.data || response.data;
-      const list = Array.isArray(data.lectures) ? data.lectures : [];
-      setCourseLectures(list.map((l: any) => ({
-        id: l.id,
-        title: l.title,
-        isCompleted: l.isCompleted ?? l.is_completed ?? false,
-        hasExam: l.hasExam ?? l.has_exam ?? false,
-      })));
-    } catch (error) {}
+      const url = `${API_URL}/api/courses/lectures?course_id=${courseId}`;
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${authToken}`, Accept: 'application/json' },
+      });
+
+      if (response.ok) {
+        const res = await response.json();
+
+        const list = Array.isArray(res.data?.data) ? res.data.data : Array.isArray(res.data?.lectures) ? res.data.lectures : Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
+
+        const mappedList = list.map((l: any) => ({
+          id: l.id,
+          title: l.title,
+          isCompleted: l.is_completed ?? l.isCompleted ?? false,
+          hasExam: l.has_exam ?? l.hasExam ?? false,
+        }));
+
+        setCourseLectures(mappedList);
+      } else {
+        console.error('Server rejected the request with status:', response.status);
+      }
+    } catch (error) {
+      console.error('Failed to fetch course lectures:', error);
+    }
   };
 
-  const fetchHomeworkStatus = async () => {
+  const fetchHomeworkStatus = async (authToken: string) => {
     try {
-      const response = await api.get(`/lectures/${lectureId}/homework/status`);
-      setHomeworkData(response.data?.data || response.data);
-    } catch (error) {}
+      const response = await fetch(`${API_URL}/api/lectures/${lectureId}/homework/status`, {
+        headers: { Authorization: `Bearer ${authToken}`, Accept: 'application/json' },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setHomeworkData(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch homework status:', error);
+    }
   };
 
   const handleHomeworkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!token) return;
     const fileInput = document.getElementById('homework-file') as HTMLInputElement;
     const file = fileInput?.files?.[0];
     if (!file) {
@@ -198,41 +315,81 @@ export default function LecturePage() {
       const formData = new FormData();
       formData.append('file', file);
 
-      await api.post(`/lectures/${lectureId}/homework/submit`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      const response = await fetch(`${API_URL}/api/lectures/${lectureId}/homework/submit`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+        body: formData
       });
 
-      alert('تم تسليم الواجب بنجاح!');
-      fetchHomeworkStatus();
-    } catch (err: any) {
-      setHomeworkError(err.response?.data?.message || err.response?.data?.error || 'فشل رفع الواجب');
+      if (response.ok) {
+        alert('تم تسليم الواجب بنجاح!');
+        fetchHomeworkStatus(token);
+      } else {
+        const data = await response.json();
+        setHomeworkError(data.message || data.error || 'فشل رفع الواجب');
+      }
+    } catch (err) {
+      setHomeworkError('حدث خطأ أثناء الاتصال بالخادم.');
     } finally {
       setSubmittingHomework(false);
     }
   };
 
   const handleViolation = async (violationType: string) => {
+    if (!token) return;
     try {
-      const response = await api.post(`/lectures/${lectureId}/violation`, { violation_type: violationType });
-      const data = response.data?.data || response.data;
-      setViolationCount(data?.fatalStrikes ?? data?.fatal_strikes ?? violationCount);
-    } catch (error) {}
+      const response = await fetch(`${API_URL}/api/lectures/${lectureId}/violation`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({ violation_type: violationType }),
+      });
+
+      if (response.ok) {
+        const res = await response.json();
+        const data = res.data || res;
+        if (data.fatalStrikes !== undefined) setViolationCount(data.fatalStrikes);
+        if (data.fatal_strikes !== undefined) setViolationCount(data.fatal_strikes);
+      }
+    } catch (error) {
+      console.error('Failed to log violation:', error);
+    }
   };
 
   const saveProgressToBackend = async (currentTime: number, totalDuration: number) => {
+    if (!token) return;
     try {
-      const response = await api.post(`/lectures/${lectureId}/progress`, { 
-        watch_time: currentTime, 
-        total_duration: totalDuration, 
-        stream_id: streamId 
+      const response = await fetch(`${API_URL}/api/lectures/${lectureId}/progress`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          watch_time: currentTime,
+          total_duration: totalDuration
+        }),
       });
 
-      const data = response.data?.data || response.data;
-      if (data?.isCompleted || data?.is_completed) {
-        setIsLectureCompleted(true);
-        setCourseLectures(prev => prev.map(l => l.id.toString() === lectureId ? { ...l, isCompleted: true } : l));
+      if (response.ok) {
+        const res = await response.json();
+        const data = res.data || res;
+
+        if (data.is_completed) {
+          setIsLectureCompleted(true);
+          setCourseLectures(prev => prev.map(l => l.id.toString() === lectureId ? { ...l, isCompleted: true } : l));
+        }
       }
-    } catch (error) {}
+    } catch (error) {
+      console.error('فشل حفظ التقدم في السيرفر:', error);
+    }
   };
 
   const handleVideoProgress = (currentTime: number, totalDuration: number) => {
@@ -246,30 +403,30 @@ export default function LecturePage() {
 
   if (isChecking || loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
-        <div className="flex-1 flex justify-center items-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        </div>
+      <div className="loading-state" style={{ minHeight: '100vh' }}>
+        <div className="spinner spinner-lg"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-        <Navbar />
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-10 max-w-md w-full text-center shadow-xl border border-gray-100">
-            <div className="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <AlertTriangleIcon size={40} />
-            </div>
-            <h2 className="text-2xl font-black text-gray-900 mb-4">تنبيه</h2>
-            <p className="text-gray-600 font-bold mb-8 leading-relaxed">{error}</p>
-            <button onClick={() => router.back()} className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 transition-colors">
-              العودة للخلف
-            </button>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)', padding: '2rem' }}>
+        <div className="card" style={{ textAlign: 'center', maxWidth: 500 }}>
+          <div className="empty-state-icon" style={{ margin: '0 auto 1rem' }}>
+            <AlertTriangleIcon size={32} />
           </div>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--error)', marginBottom: '1rem' }}>
+            تنبيه
+          </h2>
+          <div className="banner banner-error" style={{ marginBottom: '1.5rem' }}>
+            <AlertTriangleIcon size={16} />
+            {error}
+          </div>
+          <button onClick={() => router.back()} className="btn btn-primary">
+            <ArrowRightIcon size={16} style={{ marginInlineEnd: '0.5rem' }} />
+            العودة
+          </button>
         </div>
       </div>
     );
@@ -279,186 +436,237 @@ export default function LecturePage() {
 
   const completedLecturesCount = courseLectures.filter(l => l.isCompleted).length;
   const progressPercentage = courseLectures.length > 0 ? (completedLecturesCount / courseLectures.length) * 100 : 0;
-  const currentIdx = courseLectures.findIndex(l => l.id.toString() === lectureId);
-  const currentLectureData = currentIdx !== -1 ? courseLectures[currentIdx] : null;
-  const nextLecture = currentIdx !== -1 && currentIdx < courseLectures.length - 1 ? courseLectures[currentIdx + 1] : null;
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans pb-16">
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: 'var(--background)',
+      fontFamily: 'var(--font-body)',
+    }}>
       <Navbar />
-      
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <header className="flex flex-wrap items-center justify-between gap-4 mb-8">
+      <div style={{
+        maxWidth: 1400,
+        margin: '0 auto',
+        padding: '1.5rem',
+      }}>
+        <header className="flex items-center justify-between mb-6">
           <button
             onClick={() => lecture?.courseId ? router.push(`/courses/${lecture.courseId}`) : router.back()}
-            className="flex items-center gap-2 text-gray-500 hover:text-blue-600 font-bold transition-colors"
+            className="btn btn-outline"
+            style={{ gap: '0.5rem', display: 'inline-flex', alignItems: 'center' }}
           >
-            <ArrowRightIcon size={20} />
-            العودة لمحتويات الكورس
+            <ArrowRightIcon size={16} />
+            العودة للكورس
           </button>
 
-          <div className="flex gap-3">
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
             {maxViews !== null && (
-              <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-xl border border-blue-100 font-bold text-sm shadow-sm">
-                <MonitorIcon size={16} />
-                <span>مشاهداتك: {viewsCount} / {maxViews}</span>
+              <div className="badge badge-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                <MonitorIcon size={14} />
+                مشاهداتك: {viewsCount} / {maxViews}
               </div>
             )}
+
             {violationCount > 0 && (
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-xl border font-bold text-sm shadow-sm ${violationCount >= 3 ? 'bg-red-50 text-red-700 border-red-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
-                <LockIcon size={16} />
-                <span>مخالفات أمنية: {violationCount}/3</span>
+              <div className={`badge ${violationCount >= 3 ? 'badge-error' : 'badge-warning'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                <LockIcon size={14} />
+                تحذيرات أمنية: {violationCount}/3
               </div>
             )}
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            <div className="bg-black rounded-3xl overflow-hidden shadow-2xl ring-1 ring-gray-900/5">
-              <SecureVideoPlayer
-                lectureId={lectureId}
-                videoUrl={playback.url}
-                token={token}
-                watermarkText={playback.watermark}
-                onViolation={handleViolation}
-                initialTime={initialTime}
-                streamId={streamId}
-                onCompleted={() => {
-                  setIsLectureCompleted(true);
-                  setCourseLectures(prev => prev.map(l => l.id.toString() === lectureId ? { ...l, isCompleted: true } : l));
-                }}
-                onProgress={handleVideoProgress}
-              />
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 340px',
+          gap: '1.5rem',
+        }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+
+            <div className="card" style={{ padding: 0, overflow: 'hidden', background: '#000' }}>
+              <div className="video-player-container">
+                <SecureVideoPlayer
+                  lectureId={lectureId}
+                  videoUrl={playback.url}
+                  token={token}
+                  watermarkText={playback.watermark}
+                  onViolation={handleViolation}
+                  initialTime={initialTime}
+                  onCompleted={() => {
+                    setIsLectureCompleted(true);
+                    setCourseLectures(prev => prev.map(l => l.id.toString() === lectureId ? { ...l, isCompleted: true } : l));
+                  }}
+                  onProgress={handleVideoProgress}
+                  streamId={''}                />
+              </div>
             </div>
 
-            <div className="bg-white rounded-3xl p-6 md:p-8 border border-gray-100 shadow-sm flex flex-col md:flex-row gap-6 justify-between items-center">
-              <div className="flex-1 w-full text-center md:text-right">
-                <h1 className="text-2xl md:text-3xl font-black text-gray-900 mb-3 flex items-center justify-center md:justify-start gap-3">
-                  <BookIcon size={32} className="text-blue-600" />
+            <div className="card" style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ flex: 1, minWidth: '250px' }}>
+                <h1 style={{
+                  fontSize: '1.5rem',
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  marginBottom: '0.5rem',
+                  fontFamily: 'var(--font-display)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}>
+                  <BookIcon size={24} />
                   {lecture?.title || 'جاري التحميل...'}
                 </h1>
+
                 {lecture?.description && (
-                  <p className="text-gray-500 font-medium leading-relaxed max-w-2xl">
+                  <p style={{
+                    color: 'var(--text-secondary)',
+                    fontSize: '1rem',
+                    lineHeight: 1.7,
+                  }}>
                     {lecture.description}
                   </p>
                 )}
               </div>
 
-              <div className="flex flex-col gap-3 w-full md:w-auto shrink-0">
-                {currentLectureData?.hasExam && (
-                  <button onClick={() => router.push(`/exams/${lectureId}`)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3.5 rounded-xl font-bold transition-all shadow-lg shadow-indigo-200">
-                    <FileTextIcon size={20} />
-                    اختبار المحاضرة
-                  </button>
-                )}
-                {nextLecture && (
-                  <button onClick={() => router.push(`/lectures/${nextLecture.id}`)} className="w-full md:w-auto flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-100 hover:border-blue-600 px-8 py-3.5 rounded-xl font-bold transition-all">
-                    <ArrowLeftIcon size={20} />
-                    المحاضرة التالية
-                  </button>
-                )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '200px' }}>
+
+                 {(() => {
+                   const currentIdx = courseLectures.findIndex(l => l.id.toString() === lectureId);
+                   const currentLectureData = currentIdx !== -1 ? courseLectures[currentIdx] : null;
+                   const nextLecture = currentIdx !== -1 && currentIdx < courseLectures.length - 1 ? courseLectures[currentIdx + 1] : null;
+
+                   if (currentLectureData?.hasExam) {
+                     return (
+                       <button
+                         onClick={() => router.push(`/exams/${lectureId}`)}
+                         className="btn btn-primary"
+                         style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                       >
+                         <FileTextIcon size={16} />
+                         الانتقال لاختبار المحاضرة
+                       </button>
+                     );
+                   }
+
+                   if (nextLecture) {
+                     return (
+                       <button
+                         onClick={() => router.push(`/lectures/${nextLecture.id}`)}
+                         className="btn btn-outline"
+                         style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                       >
+                         <ArrowLeftIcon size={16} />
+                         المحاضرة التالية
+                       </button>
+                     );
+                   }
+
+                   return null;
+                 })()}
+
               </div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 flex items-start md:items-center gap-4 shadow-sm">
-              <div className="text-blue-600 shrink-0 bg-white p-2 rounded-full shadow-sm"><ShieldIcon size={24} /></div>
-              <p className="text-sm md:text-base text-blue-900 font-medium leading-relaxed">
-                <strong className="font-black block md:inline mb-1 md:mb-0 ml-1">سياسة الحماية الصارمة:</strong> 
-                هذا المحتوى محمي بأنظمة تتبع رقمية. محاولة استخدام أدوات المطور، أو إضافات التحميل، أو مشاركة الحساب ستؤدي للحظر النهائي مباشرة.
-              </p>
+            <div className="banner banner-warning" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <ShieldIcon size={20} />
+              <span>
+                <strong>سياسة الاستخدام الصارم:</strong> هذا الفيديو محمي بأنظمة متطورة. محاولة استخدام أدوات المطور (F12)، أو إضافات تحميل الفيديو، أو تسجيل الشاشة ستؤدي إلى إغلاق حسابك نهائياً وحظر الـ IP الخاص بك.
+              </span>
             </div>
 
+            {/* Homework Card */}
             {homeworkData && homeworkData.homework && (
-              <div className="bg-white rounded-3xl p-6 md:p-8 border border-gray-100 shadow-sm mt-4 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-2 h-full bg-indigo-500"></div>
-                
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-gray-100 mb-6">
-                  <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
-                    <BookIcon size={24} className="text-indigo-500" />
+              <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.5rem', background: '#1a1b26/30', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+                    <BookIcon size={20} />
                     الواجب الدراسي: {homeworkData.homework.title}
                   </h3>
-                  <a href={homeworkData.homework.filePath} target="_blank" rel="noreferrer" className="flex items-center gap-2 bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 px-5 py-2.5 rounded-xl font-bold transition-colors text-sm">
-                    <DownloadIcon size={18} />
-                    تحميل ملف الأسئلة
+                  <a
+                    href={homeworkData.homework.filePath}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-sm btn-outline"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                  >
+                    <DownloadIcon size={14} />
+                    تحميل ملف الواجب
                   </a>
                 </div>
 
                 {homeworkData.submission ? (
-                  <div className="flex flex-col gap-5">
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold text-gray-700">حالة الواجب:</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span className="font-bold">حالة تسليم الواجب:</span>
                       {homeworkData.submission.status === 'approved' && (
-                        <span className="bg-green-100 text-green-700 px-4 py-1.5 rounded-lg text-sm font-bold flex items-center gap-1.5">
-                          <CheckCircleIcon size={16} /> مقبول {homeworkData.submission.score !== null && `(${homeworkData.submission.score}%)`}
+                        <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <CheckIcon size={14} />
+                          مقبول {homeworkData.submission.score !== null && `(${homeworkData.submission.score}%)`}
                         </span>
                       )}
                       {homeworkData.submission.status === 'pending' && (
-                        <span className="bg-yellow-100 text-yellow-700 px-4 py-1.5 rounded-lg text-sm font-bold">قيد المراجعة</span>
+                        <span className="badge badge-warning">قيد المراجعة</span>
                       )}
                       {homeworkData.submission.status === 'rejected' && (
-                        <span className="bg-red-100 text-red-700 px-4 py-1.5 rounded-lg text-sm font-bold">مرفوض</span>
+                        <span className="badge badge-error">مرفوض</span>
                       )}
                     </div>
 
                     {homeworkData.submission.status === 'rejected' && homeworkData.submission.rejectionReason && (
-                      <div className="bg-red-50 text-red-800 p-4 rounded-xl border border-red-100 text-sm font-bold">
-                        <span className="text-red-600 block mb-1">سبب الرفض:</span>
-                        {homeworkData.submission.rejectionReason}
+                      <div className="banner banner-error" style={{ padding: '0.75rem', fontSize: '0.9rem' }}>
+                        <strong>سبب الرفض:</strong> {homeworkData.submission.rejectionReason}
                       </div>
                     )}
 
                     {homeworkData.submission.status === 'rejected' && (
-                      <form onSubmit={handleHomeworkSubmit} className="mt-2 bg-gray-50 p-5 rounded-2xl border border-gray-100">
-                        <label className="block font-bold text-gray-700 mb-3">أعد إرسال الحل بعد التصحيح:</label>
-                        <div className="flex flex-col sm:flex-row gap-3 items-center">
-                          <input type="file" id="homework-file" accept="image/*,application/pdf" className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none" required />
-                          <button type="submit" disabled={submittingHomework} className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold transition-all disabled:opacity-70">
-                            <UploadIcon size={18} />
-                            {submittingHomework ? 'جاري الرفع...' : 'إعادة التسليم'}
+                      <form onSubmit={handleHomeworkSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+                        <label className="form-label" style={{ fontWeight: 'bold' }}>أعد رفع ملف الواجب الجديد:</label>
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                          <input type="file" id="homework-file" accept="image/*,application/pdf" className="input-field" required />
+                          <button type="submit" disabled={submittingHomework} className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <UploadIcon size={16} />
+                            {submittingHomework ? 'جاري الرفع...' : 'إعادة إرسال'}
                           </button>
                         </div>
-                        {homeworkError && <p className="text-red-500 text-sm font-bold mt-2">{homeworkError}</p>}
+                        {homeworkError && <p style={{ color: 'var(--error)', fontSize: '0.85rem', margin: 0 }}>{homeworkError}</p>}
                       </form>
                     )}
                   </div>
                 ) : (
-                  <form onSubmit={handleHomeworkSubmit} className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-                    <label className="block font-bold text-gray-900 mb-4">أرفق ملف إجابتك (صورة واضحة أو PDF):</label>
-                    <div className="flex flex-col sm:flex-row gap-3 items-center">
-                      <input type="file" id="homework-file" accept="image/*,application/pdf" className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:outline-none" required />
-                      <button type="submit" disabled={submittingHomework} className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold transition-all disabled:opacity-70 shadow-lg shadow-indigo-200">
-                        <UploadIcon size={20} />
+                  <form onSubmit={handleHomeworkSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <label className="form-label" style={{ fontWeight: 'bold' }}>قم برفع حل الواجب (صورة أو ملف PDF):</label>
+                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input type="file" id="homework-file" accept="image/*,application/pdf" className="input-field" required />
+                      <button type="submit" disabled={submittingHomework} className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <UploadIcon size={16} />
                         {submittingHomework ? 'جاري الرفع...' : 'تسليم الواجب'}
                       </button>
                     </div>
-                    {homeworkError && <p className="text-red-500 text-sm font-bold mt-3">{homeworkError}</p>}
+                    {homeworkError && <p style={{ color: 'var(--error)', fontSize: '0.85rem', margin: 0 }}>{homeworkError}</p>}
                   </form>
                 )}
               </div>
             )}
           </div>
 
-          <aside className="lg:col-span-1">
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm sticky top-6">
-              <div className="p-6 border-b border-gray-100 bg-gray-50 rounded-t-3xl">
-                <h3 className="text-lg font-black text-gray-900 flex items-center gap-2 mb-4">
-                  <FileTextIcon size={22} className="text-blue-600" />
-                  محتويات المنهج
+          <aside>
+            <div className="card" style={{ position: 'sticky', top: '2rem' }}>
+              <div className="card-header" style={{ border: 'none', padding: 0, marginBottom: '1rem' }}>
+                <h3 style={{
+                  fontSize: '1.125rem',
+                  fontWeight: 700,
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-display)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                }}>
+                  <FileTextIcon size={18} />
+                  محتويات الكورس
                 </h3>
-                
-                <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-bold text-gray-500">نسبة الإنجاز</span>
-                    <span className="text-sm font-black text-green-600">{Math.round(progressPercentage)}%</span>
-                  </div>
-                  <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500 rounded-full transition-all duration-500 ease-out" style={{ width: `${progressPercentage}%` }}></div>
-                  </div>
-                </div>
               </div>
 
-              <div className="p-4 flex flex-col gap-2 max-h-[60vh] overflow-y-auto overflow-x-hidden custom-scrollbar">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
                 {courseLectures.length > 0 ? (
                   courseLectures.map((lec, index) => {
                     const isCurrent = lec.id.toString() === lectureId;
@@ -467,44 +675,110 @@ export default function LecturePage() {
                     return (
                       <button
                         key={lec.id}
-                        onClick={() => { if (!isCurrent) router.push(`/lectures/${lec.id}`); }}
-                        className={`flex items-center gap-4 w-full p-3.5 rounded-2xl transition-all border text-right
-                          ${isCurrent ? 'bg-blue-600 border-blue-600 text-white shadow-md transform scale-[1.02]' : 
-                            isCompleted ? 'bg-green-50 border-green-100 text-gray-700 hover:bg-green-100' : 
-                            'bg-white border-transparent text-gray-600 hover:bg-gray-50 hover:border-gray-200'}
-                        `}
+                        onClick={() => {
+                          if (!isCurrent) {
+                             router.push(`/lectures/${lec.id}`);
+                          }
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          padding: '0.875rem',
+                          background: isCurrent
+                                      ? 'var(--primary)'
+                                      : isCompleted
+                                          ? 'rgba(16, 185, 129, 0.05)'
+                                          : 'var(--background)',
+                          color: isCurrent ? 'white' : 'var(--text-secondary)',
+                          border: isCurrent
+                                  ? 'none'
+                                  : isCompleted
+                                      ? '1px solid rgba(16, 185, 129, 0.3)'
+                                      : '1px solid var(--border)',
+                          borderRadius: 'var(--radius-md)',
+                          cursor: isCurrent ? 'default' : 'pointer',
+                          textAlign: 'start',
+                          transition: 'all 0.2s ease',
+                          width: '100%',
+                        }}
                       >
-                        <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-black text-sm
-                          ${isCurrent ? 'bg-white/20 text-white' : 
-                            isCompleted ? 'bg-green-100 text-green-600' : 
-                            'bg-gray-100 text-gray-400'}
-                        `}>
-                          {isCompleted && !isCurrent ? <CheckIcon size={16} /> : index + 1}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm truncate ${isCurrent || isCompleted ? 'font-black' : 'font-bold'}`}>
+                        <span style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: '50%',
+                          background: isCurrent
+                              ? 'rgba(255,255,255,0.2)'
+                              : isCompleted ? 'rgba(16, 185, 129, 0.1)' : 'var(--border)',
+                          color: isCurrent
+                              ? 'white'
+                              : isCompleted ? 'var(--success)' : 'var(--text-muted)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.875rem',
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}>
+                          {isCompleted && !isCurrent ? <CheckIcon size={14} /> : index + 1}
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: '0.875rem',
+                            fontWeight: isCurrent || isCompleted ? 700 : 500,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}>
                             {lec.title}
-                          </p>
+                          </div>
                         </div>
                       </button>
                     );
                   })
                 ) : (
-                  <p className="text-gray-400 text-center font-bold py-8">جاري تحميل المحاضرات...</p>
+                  <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontSize: '0.875rem' }}>
+                    جاري تحميل المحاضرات...
+                  </p>
                 )}
+              </div>
+
+              <div style={{
+                marginTop: '1.5rem',
+                padding: '1rem',
+                backgroundColor: 'var(--background)',
+                borderRadius: 'var(--radius-md)',
+                textAlign: 'center',
+              }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                 نسبة إنجازك في الكورس
+                </p>
+                <div className="progress-bar" style={{ height: '8px', background: 'var(--border)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div className="progress-bar-fill" style={{
+                    width: `${progressPercentage}%`,
+                    background: 'var(--success)',
+                    height: '100%',
+                    transition: 'width 0.3s ease'
+                  }}></div>
+                </div>
+                <p style={{ color: 'var(--success)', fontSize: '0.875rem', marginTop: '0.5rem', fontWeight: 'bold' }}>
+                  {Math.round(progressPercentage)}%
+                </p>
               </div>
             </div>
           </aside>
         </div>
       </div>
 
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
-        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      <style jsx>{`
+        @media (max-width: 1024px) {
+          div[style*="grid-template-columns"] {
+            grid-template-columns: 1fr !important;
+          }
+          aside > div {
+            position: static !important;
+          }
+        }
       `}</style>
     </div>
   );
