@@ -58,6 +58,9 @@ export default function AdminComprehensiveExamsPage() {
   const [courseTitle, setCourseTitle] = useState('جاري التحميل...');
   const [exams, setExams] = useState<ComprehensiveExam[]>([]);
   const [loading, setLoading] = useState(true);
+  // 🛑 Audit fix (C-2): explicit error state so the admin sees a retry
+  // card instead of an infinite spinner when the data endpoint fails.
+  const [loadError, setLoadError] = useState<string | null>(null);
   
   // View States: 'list' | 'settings' | 'questions'
   const [currentView, setCurrentView] = useState<'list' | 'settings' | 'questions'>('list');
@@ -158,7 +161,9 @@ export default function AdminComprehensiveExamsPage() {
 
       setExams(mappedExams);
     } catch (err: any) {
-      showToast(err?.message || 'فشل تحميل الاختبارات الشاملة (تأكد من عمل Migrate للقاعدة)', 'error');
+      const message = err?.message || 'فشل تحميل الاختبارات الشاملة (تأكد من عمل Migrate للقاعدة)';
+      setLoadError(message);
+      showToast(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -620,6 +625,20 @@ export default function AdminComprehensiveExamsPage() {
         {currentView === 'list' && (
           loading ? (
             <div className="card p-16 flex justify-center bg-white rounded-2xl shadow-sm border border-gray-100"><div className="spinner spinner-primary spinner-lg" /></div>
+          ) : loadError ? (
+            // 🛑 Audit fix (C-2): visible error card with retry button so the
+            // admin can recover without leaving the page.
+            <div className="card bg-white border border-red-100 shadow-sm rounded-2xl py-16 text-center">
+              <div className="empty-state-icon bg-red-50 w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-inner"><AlertTriangleIcon size={48} className="text-error" /></div>
+              <h3 className="text-2xl font-black text-gray-800">تعذّر تحميل الاختبارات الشاملة</h3>
+              <p className="text-gray-500 font-medium text-lg mt-2 mb-8 max-w-md mx-auto leading-relaxed">{loadError}</p>
+              <button
+                onClick={() => { setLoadError(null); setLoading(true); fetchExams(); }}
+                className="btn btn-primary px-6 py-3 rounded-xl shadow-lg shadow-blue-200 font-bold"
+              >
+                <CheckCircleIcon size={18} className="ml-2 inline" /> إعادة المحاولة
+              </button>
+            </div>
           ) : exams.length === 0 ? (
             <div className="empty-state bg-white border border-gray-100 rounded-2xl py-20 shadow-sm text-center">
               <div className="empty-state-icon bg-blue-50 w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-inner"><ShieldIcon size={48} className="text-primary" /></div>

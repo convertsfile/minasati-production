@@ -37,6 +37,7 @@ export default function StudentExamDetailsPage() {
 
   const [exam, setExam] = useState<ExamDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [processingAction, setProcessingAction] = useState(false);
 
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({ visible: false, message: '', type: 'success' });
@@ -101,8 +102,13 @@ export default function StudentExamDetailsPage() {
         userWalletBalance: data.user_wallet_balance ?? data.userWalletBalance ?? 0,
       });
     } catch (err: any) {
-      showToast(err?.message || 'فشل تحميل بيانات الاختبار', 'error');
-      setTimeout(() => router.push('/courses'), 2000);
+      // 🛑 Audit fix (C-1): previously the catch block silently redirected
+      // the user to /courses after 2s, dumping them out of the deep page
+      // they asked for. Now we surface the failure inline with a retry
+      // button so the student can recover without losing context.
+      const message = err?.message || 'فشل تحميل بيانات الاختبار';
+      setError(message);
+      showToast(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -192,7 +198,41 @@ export default function StudentExamDetailsPage() {
     );
   }
 
-  if (!exam) return null;
+  // 🛑 Audit fix (C-1): replace the silent `return null` with a visible
+  // error card that explains what happened and offers a retry, so the
+  // student is never stuck on a blank screen.
+  if (error || !exam) {
+    return (
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col" dir="rtl">
+        <Navbar />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white border border-red-100 shadow-xl rounded-3xl max-w-md w-full p-8 text-center animate-fade-in">
+            <div className="flex justify-center mb-5 text-error">
+              <AlertTriangleIcon size={56} />
+            </div>
+            <h2 className="text-2xl font-black text-gray-900 mb-3">تعذّر تحميل الاختبار</h2>
+            <p className="text-gray-600 font-medium leading-relaxed mb-7">
+              {error || 'الاختبار غير موجود أو لم يتم نشره بعد. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.'}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => { setError(null); setLoading(true); fetchExamDetails(); }}
+                className="btn btn-primary px-6 py-3 font-bold rounded-xl shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
+              >
+                <CheckCircleIcon size={18} /> إعادة المحاولة
+              </button>
+              <button
+                onClick={() => router.push('/courses')}
+                className="btn btn-outline px-6 py-3 font-bold rounded-xl border-gray-300"
+              >
+                العودة للمتجر
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col pb-20" dir="rtl">

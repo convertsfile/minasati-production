@@ -88,6 +88,9 @@ export default function WalletPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [topupHistory, setTopupHistory] = useState<TopupRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  // 🛑 Audit fix (C-4): surface a retry-able error state instead of an
+  // infinite spinner when the wallet endpoints hang or fail.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [topupStep, setTopupStep] = useState<'select-method' | 'show-number' | 'upload-proof' | 'success'>('select-method');
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
@@ -120,16 +123,30 @@ export default function WalletPage() {
         return;
       }
 
-      const [balanceRes, transactionsRes] = await Promise.all([
-        fetch(`${API_URL}/api/wallet/balance`, {
-          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-        }),
-        fetch(`${API_URL}/api/wallet/transactions?limit=10`, {
-          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-        }),
-      ]);
+      // 🛑 Audit fix (C-4): bound the request with a timeout so a dead
+      // backend cannot leave the page on an infinite spinner.
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 12000);
+      let balanceRes: Response;
+      let transactionsRes: Response;
+      try {
+        [balanceRes, transactionsRes] = await Promise.all([
+          fetch(`${API_URL}/api/wallet/balance`, {
+            headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+            signal: controller.signal,
+          }),
+          fetch(`${API_URL}/api/wallet/transactions?limit=10`, {
+            headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+            signal: controller.signal,
+          }),
+        ]);
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
+      let anySuccess = false;
       if (balanceRes.ok) {
+        anySuccess = true;
         const balanceData = await balanceRes.json();
         setBalance(balanceData.data?.balance || 0);
 
@@ -150,6 +167,7 @@ export default function WalletPage() {
       }
 
       if (transactionsRes.ok) {
+        anySuccess = true;
         const transactionsData = await transactionsRes.json();
         const rawTransactions = transactionsData.data?.data || transactionsData.data || [];
         const mappedTransactions = rawTransactions.map((t: any) => ({
@@ -169,8 +187,19 @@ export default function WalletPage() {
         }));
         setTransactions(mappedTransactions);
       }
-    } catch (err) {
+
+      if (!anySuccess) {
+        setLoadError('تعذّر الوصول إلى بيانات المحفظة. تحقق من اتصالك بالإنترنت وحاول مجدداً.');
+      } else {
+        setLoadError(null);
+      }
+    } catch (err: any) {
       console.error('Error fetching wallet data:', err);
+      setLoadError(
+        err?.name === 'AbortError'
+          ? 'استغرقت العملية وقتاً طويلاً. يرجى المحاولة مرة أخرى.'
+          : 'حدث خطأ أثناء جلب بيانات المحفظة.'
+      );
     } finally {
       setLoading(false);
     }
@@ -370,6 +399,37 @@ export default function WalletPage() {
         <div className="page-content">
           <div className="loading-state">
             <div className="spinner spinner-lg" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 🛑 Audit fix (C-4): show a visible retry card so the user is never
+  // trapped on a blank screen when wallet endpoints fail.
+  if (loadError) {
+    return (
+      <div className="page-container">
+        <Navbar />
+        <div className="page-content">
+          <div className="page-header">
+            <div>
+              <h1 className="page-title">محفظتي</h1>
+              <p className="page-subtitle">إدارة رصيدك وطلبات الشحن</p>
+            </div>
+          </div>
+          <div className="card bg-white border border-red-100 shadow-sm rounded-2xl py-16 text-center">
+            <div className="empty-state-icon bg-red-50 w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-inner">
+              <AlertTriangleIcon size={48} />
+            </div>
+            <h3 className="text-2xl font-black text-gray-800">تعذّر تحميل المحفظة</h3>
+            <p className="text-gray-500 font-medium text-lg mt-2 mb-8 max-w-md mx-auto leading-relaxed">{loadError}</p>
+            <button
+              onClick={() => { setLoadError(null); setLoading(true); fetchWalletData(); }}
+              className="btn btn-primary px-6 py-3 rounded-xl shadow-lg shadow-blue-200 font-bold"
+            >
+              <CheckIcon size={18} className="ml-2 inline" /> إعادة المحاولة
+            </button>
           </div>
         </div>
       </div>

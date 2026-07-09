@@ -291,8 +291,10 @@ export default function AllStudentsPage() {
         </div>
 
         <div className="card mb-6">
-          <div className="flex gap-4 flex-wrap">
-            <div className="flex-1 min-w-[200px] relative">
+          <div className="flex gap-4 flex-wrap items-center">
+            {/* 🛑 Audit fix (M-4): cap the search input's growth so it can
+                no longer overflow into the year dropdown on the same row. */}
+            <div className="flex-1 min-w-[200px] max-w-full basis-full sm:basis-auto" style={{ maxWidth: 'min(100%, 360px)' }}>
               <SearchIcon size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
               <input
                 type="text"
@@ -307,7 +309,7 @@ export default function AllStudentsPage() {
               />
             </div>
 
-            <div style={{ width: '200px' }}>
+            <div style={{ width: '220px' }}>
               <select
                 value={academicYearFilter}
                 onChange={(e) => {

@@ -65,6 +65,12 @@ func (fc *FFmpegCommand) BuildHLSCommand(
 	for i := range activeQualities {
 		dir := filepath.Join(workDir, fmt.Sprintf("v%d", i))
 		os.MkdirAll(dir, 0755)
+		entries, _ := os.ReadDir(dir)
+		for _, e := range entries {
+			if !e.IsDir() && (strings.HasSuffix(e.Name(), ".ts") || strings.HasSuffix(e.Name(), ".m3u8")) {
+				os.Remove(filepath.Join(dir, e.Name()))
+			}
+		}
 		outputDirs = append(outputDirs, dir)
 	}
 

@@ -6,7 +6,7 @@ import AdminSidebar from '@/app/components/AdminSidebar';
 import {
   BarChartIcon, RefreshIcon, FileTextIcon, UsersIcon, XIcon,
   SearchIcon, SettingsIcon, UserIcon, CreditCardIcon, BookIcon,
-  CheckIcon, CheckCircleIcon
+  CheckIcon, CheckCircleIcon, AlertTriangleIcon
 } from '@/app/components/Icons';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -26,6 +26,9 @@ export default function CourseStatsPage() {
   const router = useRouter();
   const [stats, setStats] = useState<CourseStat[]>([]);
   const [loading, setLoading] = useState(true);
+  // 🛑 Audit fix (M-5): explicit error state so the body renders a
+  // visible retry card instead of just showing a toast.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Modal States
   const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
@@ -52,22 +55,39 @@ export default function CourseStatsPage() {
 
   const fetchCourseStats = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const token = getToken();
       if (!token) { router.push('/login'); return; }
 
-      const res = await fetch(`${API_URL}/api/admin/wallet/course-stats`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-      });
+      // 🛑 Audit fix (M-5): bound the request with a timeout so a dead
+      // backend cannot leave the page on an infinite spinner.
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 12000);
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}/api/admin/wallet/course-stats`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
       if (res.ok) {
         const result = await res.json();
         setStats(result.data || []);
       } else {
-        showToast('فشل تحميل إحصائيات الكورسات', 'error');
+        const message = 'فشل تحميل إحصائيات الكورسات';
+        setLoadError(message);
+        showToast(message, 'error');
       }
-    } catch (e) {
-      showToast('خطأ في الاتصال بالخادم', 'error');
+    } catch (e: any) {
+      const message = e?.name === 'AbortError'
+        ? 'استغرق تحميل الإحصائيات وقتاً طويلاً.'
+        : 'خطأ في الاتصال بالخادم';
+      setLoadError(message);
+      showToast(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -251,6 +271,17 @@ export default function CourseStatsPage() {
           <div className="loading-state">
             <div className="spinner spinner-lg"></div>
             <p className="mt-4 font-bold">جاري تحميل الإحصائيات...</p>
+          </div>
+        ) : loadError ? (
+          // 🛑 Audit fix (M-5): render a visible retry card so the
+          // admin can recover from a failed stats fetch.
+          <div className="card bg-white border border-red-100 shadow-sm rounded-2xl py-16 text-center">
+            <div className="empty-state-icon bg-red-50 w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-inner"><AlertTriangleIcon size={48} className="text-error" /></div>
+            <h3 className="text-2xl font-black text-gray-800">تعذّر تحميل إحصائيات الكورسات</h3>
+            <p className="text-gray-500 font-medium text-lg mt-2 mb-8 max-w-md mx-auto leading-relaxed">{loadError}</p>
+            <button onClick={fetchCourseStats} className="btn btn-primary px-6 py-3 rounded-xl shadow-lg shadow-blue-200 font-bold">
+              <CheckCircleIcon size={18} className="ml-2 inline" /> إعادة المحاولة
+            </button>
           </div>
         ) : stats.length === 0 ? (
           <div className="empty-state">

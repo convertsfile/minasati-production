@@ -77,12 +77,45 @@ api.interceptors.response.use(
     console.error(`🚨 [Axios Error] Status: ${status} | URL: ${error.config?.url} | Message:`, error.response?.data?.message || error.message);
 
     const errorCode = error.response?.data?.code;
+    const reqUrl = error.config?.url || '';
 
-    // 🔴 401 Unauthorized: التوكن منتهي أو تم تدميره (Logout)
+    // 🔴 401 Unauthorized: only force a logout for AUTH-endpoint failures.
+    // Previously this fired for ANY 401 — including data endpoints such as
+    // /api/comprehensive-exams/{id} that return 401 on per-record access
+    // checks. That kicked the user out of deep pages (e.g. /comprehensive-exams/[id],
+    // /admin/courses/[id]/comprehensive-exams) and dumped them on the login
+    // screen, breaking the design audit's CRITICAL findings C-1 and C-2.
+    //
+    // Auth endpoints that should still trigger the global redirect:
+    //   • /auth/login  • /auth/register  • /auth/me  • /auth/verify-otp
+    //   • /auth/refresh • /auth/logout  • /auth/forgot/... • /auth/reset/...
+    //
+    // Data endpoints must surface the 401 to the caller (as a rejected
+    // promise) so the page can render an error state with a retry button
+    // instead of nuking the navigation.
     if (status === 401) {
-      Cookies.remove('token');
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        window.location.href = '/login?session_expired=true';
+      const isAuthEndpoint =
+        typeof reqUrl === 'string' && (
+          reqUrl.includes('/auth/login') ||
+          reqUrl.includes('/auth/register') ||
+          reqUrl.includes('/auth/me') ||
+          reqUrl.includes('/auth/verify-otp') ||
+          reqUrl.includes('/auth/verify/resend') ||
+          reqUrl.includes('/auth/refresh') ||
+          reqUrl.includes('/auth/logout') ||
+          reqUrl.includes('/auth/forgot') ||
+          reqUrl.includes('/auth/reset') ||
+          reqUrl.includes('/auth/check') ||
+          reqUrl.includes('/auth/status') ||
+          reqUrl.includes('/auth/resend-otp') ||
+          reqUrl.includes('/auth/resubmit-documents') ||
+          reqUrl.includes('/sanctum/')
+        );
+      if (isAuthEndpoint) {
+        Cookies.remove('token');
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          window.location.href = '/login?session_expired=true';
+        }
       }
     }
 

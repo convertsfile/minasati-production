@@ -8,44 +8,51 @@ fs.mkdirSync(OUT_DIR, { recursive: true });
 
 const BASE = 'http://localhost:3002';
 
-async function setAuthCookie(context) {
-  // Use domain+path instead of url to satisfy addCookies API
+async function setAuthState(context, role = 'user') {
+  // Cookie
   await context.addCookies([
-    {
-      name: 'token',
-      value: 'audit-mock-token',
-      domain: 'localhost',
-      path: '/',
-      httpOnly: false,
-      secure: false,
-    },
+    { name: 'token', value: 'audit-mock-token', domain: 'localhost', path: '/', httpOnly: false, secure: false },
   ]);
-}
-
-async function mockAuthMe(context) {
-  await context.addInitScript(() => {
-    const originalFetch = window.fetch;
-    window.fetch = async function (input, init) {
-      const url = typeof input === 'string' ? input : input?.url;
-      if (url && url.includes('/api/auth/me')) {
-        return new Response(
-          JSON.stringify({
-            success: true,
-            data: {
-              id: 1,
-              full_name: 'مدير المنصة',
-              email: 'admin@eduplatform.com',
-              isAdmin: true,
-              is_admin: true,
-              role: 'super_admin',
-            },
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        );
-      }
-      return originalFetch(input, init);
-    };
-  });
+  // localStorage
+  await context.addInitScript((roleArg) => {
+    try {
+      localStorage.setItem('token', 'audit-mock-token');
+      localStorage.setItem('user', JSON.stringify({
+        id: 1,
+        full_name: roleArg === 'admin' ? 'مدير المنصة' : 'طالب تجريبي',
+        email: roleArg === 'admin' ? 'admin@eduplatform.com' : 'student@example.com',
+        isAdmin: roleArg === 'admin',
+        is_admin: roleArg === 'admin',
+        role: roleArg === 'admin' ? 'super_admin' : 'student',
+      }));
+    } catch (e) {}
+  }, role);
+  // Mock /api/auth/me for admin pages
+  if (role === 'admin') {
+    await context.addInitScript(() => {
+      const originalFetch = window.fetch;
+      window.fetch = async function (input, init) {
+        const url = typeof input === 'string' ? input : input?.url;
+        if (url && url.includes('/api/auth/me')) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              data: {
+                id: 1,
+                full_name: 'مدير المنصة',
+                email: 'admin@eduplatform.com',
+                isAdmin: true,
+                is_admin: true,
+                role: 'super_admin',
+              },
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+        return originalFetch(input, init);
+      };
+    });
+  }
 }
 
 async function shot(page, name) {
@@ -77,14 +84,13 @@ const VIEWS = [
   { name: 'mobile', width: 390, height: 844 },
 ];
 
-// auth: 'none' | 'user' (student) | 'admin'
 const PAGES = [
   { url: '/', slug: 'home', auth: 'none' },
   { url: '/login', slug: 'login', auth: 'none' },
   { url: '/register', slug: 'register', auth: 'none' },
   { url: '/otp', slug: 'otp', auth: 'none' },
   { url: '/forum', slug: 'forum', auth: 'user' },
-  { url: '/courses', slug: 'courses', auth: 'none' },
+  { url: '/courses', slug: 'courses', auth: 'user' },
   { url: '/wallet', slug: 'wallet', auth: 'user' },
   { url: '/blocked', slug: 'blocked', auth: 'user' },
   { url: '/locked', slug: 'locked', auth: 'user' },
@@ -123,20 +129,17 @@ const PAGES = [
         viewport: { width: view.width, height: view.height },
         locale: 'ar-EG',
       });
-      if (p.auth === 'user') await setAuthCookie(context);
-      if (p.auth === 'admin') {
-        await setAuthCookie(context);
-        await mockAuthMe(context);
-      }
+      if (p.auth === 'user' || p.auth === 'admin') await setAuthState(context, p.auth);
       const page = await context.newPage();
       const url = `${BASE}${p.url}`;
       try {
-        const resp = await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
+        // Use 'domcontentloaded' instead of 'networkidle' to avoid hanging on long-polling
+        const resp = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
         if (resp) console.log(`  -> ${p.url} HTTP ${resp.status()}`);
       } catch (e) {
-        console.log(`  -> ${p.url} ERR ${e.message}`);
+        console.log(`  -> ${p.url} ERR ${e.message.slice(0, 80)}`);
       }
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(3000);
       const slug = p.slug + (view.name === 'mobile' ? '-mobile' : '-desktop');
       try {
         await shot(page, `${slug}.png`);

@@ -262,9 +262,12 @@ export default function StudentForumPage() {
 
         <div className="page-header" style={{ justifyContent: 'center' }}>
           <div style={{ textAlign: 'center' }}>
-            <h1 className="page-title flex items-center justify-center gap-3">
+            <h1 className="page-title flex items-center justify-center gap-3" style={{ flexWrap: 'wrap' }}>
               <MessageIcon size={28} />
-              منتدى {academicYear || 'المنتدى الأكاديمي'}
+              {/* 🛑 Audit fix (M-6): the previous label produced the
+                  tautology "منتدى المنتدى الأكاديمي" whenever
+                  academicYear was empty. Use a single, clean title. */}
+              المنتدى الأكاديمي{academicYear ? ` (${academicYear})` : ''}
             </h1>
             <p className="page-subtitle">اسأل، شارك، وتفاعل مع طلاب {academicYear || 'صفك'} وفريق الدعم.</p>
           </div>

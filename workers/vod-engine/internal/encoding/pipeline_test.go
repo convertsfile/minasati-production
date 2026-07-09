@@ -3,7 +3,6 @@ package encoding
 import (
 	"bytes"
 	"context"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -57,11 +56,11 @@ func TestLimitedWriter_WriteBeyondLimit(t *testing.T) {
 	// Second write exceeds limit
 	data := []byte("world")
 	n, err := lw.Write(data)
-	if err != io.ErrShortWrite {
-		t.Errorf("expected io.ErrShortWrite, got %v", err)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
 	}
-	if n != 0 {
-		t.Errorf("expected 0 bytes written on overflow, got %d", n)
+	if n != 5 {
+		t.Errorf("expected 5 bytes reported (silently discarded), got %d", n)
 	}
 }
 
@@ -78,11 +77,11 @@ func TestLimitedWriter_WritePartialBeyondLimit(t *testing.T) {
 	// Try to write 5 more bytes, only 2 should fit
 	data := []byte("world")
 	n, err := lw.Write(data)
-	if err != io.ErrShortWrite {
-		t.Errorf("expected io.ErrShortWrite for partial write, got %v", err)
+	if err != nil {
+		t.Errorf("expected no error for partial write, got %v", err)
 	}
-	if n != 2 {
-		t.Errorf("expected 2 bytes written (remaining capacity), got %d", n)
+	if n != 5 {
+		t.Errorf("expected 5 bytes reported (silently discarded), got %d", n)
 	}
 	// Buffer should contain "hellow" (5 + 2 chars)
 	if buf.String() != "hellowo" {
@@ -114,11 +113,11 @@ func TestLimitedWriter_WriteMultiplePartial(t *testing.T) {
 
 	// Write 5 more bytes (only 2 should fit)
 	n, err = lw.Write([]byte("ijklm"))
-	if err != io.ErrShortWrite {
-		t.Errorf("expected io.ErrShortWrite, got %v", err)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
 	}
-	if n != 2 {
-		t.Errorf("expected 2 bytes written (remaining capacity), got %d", n)
+	if n != 5 {
+		t.Errorf("expected 5 bytes reported (silently discarded), got %d", n)
 	}
 
 	if buf.String() != "abcdefghij" {
@@ -131,10 +130,10 @@ func TestLimitedWriter_ZeroLimit(t *testing.T) {
 	lw := &limitedWriter{w: &buf, limit: 0}
 
 	n, err := lw.Write([]byte("hello"))
-	if err != io.ErrShortWrite {
-		t.Errorf("expected io.ErrShortWrite, got %v", err)
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
 	}
-	if n != 0 {
+	if n != 5 {
 		t.Errorf("expected 0, got %d", n)
 	}
 }
@@ -164,13 +163,12 @@ func TestLimitedWriterString(t *testing.T) {
 	longStr := strings.Repeat("a", 200)
 	n, err := lw.Write([]byte(longStr))
 
-	// Should write 100 bytes (the limit) and return io.ErrShortWrite because
-	// fewer bytes were written than the original input length
-	if err != io.ErrShortWrite {
-		t.Errorf("expected io.ErrShortWrite for truncated write, got %v", err)
+	// Should write 100 bytes (the limit) and report full length (silently discarded)
+	if err != nil {
+		t.Errorf("expected no error for truncated write, got %v", err)
 	}
-	if n != 100 {
-		t.Errorf("expected 100 bytes written (the limit), got %d", n)
+	if n != 200 {
+		t.Errorf("expected 200 bytes reported (silently discarded), got %d", n)
 	}
 	if buf.Len() != 100 {
 		t.Errorf("expected buffer to have 100 bytes, got %d", buf.Len())

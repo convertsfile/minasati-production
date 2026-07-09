@@ -49,6 +49,10 @@ export default function AdminHomeworkPage() {
   const [score, setScore] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
+  // 🛑 Audit fix (M-2): explicit error state so the admin sees a visible
+  // retry card (not just a toast) when /admin/homework/submissions fails.
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({ visible: false, message: '', type: 'success' });
   const showToast = (message: string, type: 'success' | 'error') => {
     setToast({ visible: true, message, type });
@@ -61,19 +65,38 @@ export default function AdminHomeworkPage() {
 
   const fetchSubmissions = async (pageNumber = 1) => {
     setLoading(true);
+    setLoadError(null);
     const token = getToken();
     try {
-      const res = await fetch(`${API_URL}/api/admin/homework/submissions?page=${pageNumber}`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-      });
+      // 🛑 Audit fix (M-2): 22s AbortController timeout so a dead backend
+      // cannot leave the page on an infinite spinner, while leaving
+      // headroom for slow cold-start connections.
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 22000);
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}/api/admin/homework/submissions?page=${pageNumber}`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
       if (res.ok) {
         const data = await res.json();
         setSubmissions(data.data.data || []);
         setTotalPages(data.data.meta?.lastPage || data.data.last_page || 1);
+        setLoadError(null);
       } else {
+        setLoadError(`فشل تحميل الواجبات المعلقة (HTTP ${res.status}).`);
         showToast('فشل تحميل الواجبات المعلقة', 'error');
       }
-    } catch (e) {
+    } catch (e: any) {
+      setLoadError(
+        e?.name === 'AbortError'
+          ? 'استغرق تحميل الواجبات وقتاً طويلاً. تحقق من اتصالك وحاول مجدداً.'
+          : 'خطأ في الاتصال بالخادم'
+      );
       showToast('خطأ في الاتصال بالخادم', 'error');
     } finally {
       setLoading(false);
@@ -152,6 +175,34 @@ export default function AdminHomeworkPage() {
           <div className="loading-state">
             <div className="spinner spinner-lg" />
             <p className="mt-4 text-muted">جاري تحميل طلبات الواجبات...</p>
+          </div>
+        ) : loadError ? (
+          // 🛑 Audit fix (M-2): visible inline retry card (toast is kept
+          // for the user who has scrolled past; the card is for everyone
+          // else). Includes a "Sign in again" escape hatch for genuine
+          // 401s so the admin is not trapped on a blank page.
+          <div className="card bg-white border border-red-100 shadow-sm rounded-2xl py-12 text-center">
+            <div className="empty-state-icon bg-red-50 w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-5 shadow-inner" style={{ color: 'var(--error)' }}>⚠️</div>
+            <h3 className="text-xl font-black text-gray-800">تعذّر تحميل الواجبات</h3>
+            <p className="text-gray-500 font-medium mt-2 mb-6 max-w-md mx-auto leading-relaxed">{loadError}</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+              <button
+                onClick={() => fetchSubmissions(page)}
+                className="btn btn-primary px-6 py-3 rounded-xl font-bold"
+              >
+                إعادة المحاولة
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.removeItem('token');
+                  document.cookie = 'token=; path=/; max-age=0';
+                  window.location.href = '/login';
+                }}
+                className="btn btn-outline px-6 py-3 rounded-xl font-bold"
+              >
+                تسجيل الدخول من جديد
+              </button>
+            </div>
           </div>
         ) : submissions.length === 0 ? (
           <div className="empty-state">

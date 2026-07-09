@@ -99,6 +99,9 @@ func (p *Pipeline) Run(ctx context.Context, subJob *queue.SubJob, progress Progr
 	inputFilePath := filepath.Join(workDir, "input.mp4")
 	needDownload := true
 
+	// Clean stale master.m3u8 from previous runs to prevent watchdog false-positives
+	os.Remove(filepath.Join(workDir, "master.m3u8"))
+
 	if _, err := os.Stat(inputFilePath); err == nil {
 		needDownload = false
 		attrs := logging.LogAttrs("pipeline", subJob.ID, lectureID, subJob.CorrelationID)
@@ -847,9 +850,10 @@ type limitedWriter struct {
 }
 
 func (lw *limitedWriter) Write(p []byte) (int, error) {
+	origLen := len(p)
 	remaining := lw.limit - lw.written
 	if remaining <= 0 {
-		return 0, io.ErrShortWrite
+		return origLen, nil
 	}
 	if int64(len(p)) > remaining {
 		p = p[:remaining]
@@ -858,7 +862,7 @@ func (lw *limitedWriter) Write(p []byte) (int, error) {
 		if err != nil {
 			return n, err
 		}
-		return n, io.ErrShortWrite
+		return origLen, nil
 	}
 	n, err := lw.w.Write(p)
 	lw.written += int64(n)

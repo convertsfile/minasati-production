@@ -21,6 +21,9 @@ export default function PaymentNumbersPage() {
   const [instapayNumbers, setInstapayNumbers] = useState<PaymentNumber[]>([]);
   const [vodafoneNumbers, setVodafoneNumbers] = useState<PaymentNumber[]>([]);
   const [loading, setLoading] = useState(true);
+  // 🛑 Audit fix (M-3): explicit error state so the admin sees a visible
+  // retry card instead of an empty/ambiguous render when the endpoint fails.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   
   const [newProvider, setNewProvider] = useState<'instapay' | 'vodafone_cash'>('instapay');
@@ -43,14 +46,25 @@ export default function PaymentNumbersPage() {
 
   const fetchNumbers = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const token = getToken();
-      const response = await fetch(`${API_URL}/api/admin/payment-numbers`, {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
-        },
-      });
+      // 🛑 Audit fix (M-3): bound the request with a timeout so a dead
+      // backend cannot leave the page on an infinite spinner.
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 22000);
+      let response: Response;
+      try {
+        response = await fetch(`${API_URL}/api/admin/payment-numbers`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          },
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
       if (response.ok) {
         const data = await response.json();
@@ -58,10 +72,23 @@ export default function PaymentNumbersPage() {
         setInstapayNumbers(allNumbers.filter((n: PaymentNumber) => n.provider === 'instapay'));
         setVodafoneNumbers(allNumbers.filter((n: PaymentNumber) => n.provider === 'vodafone_cash'));
       } else if (response.status === 401) {
-        router.push('/login');
+        // 🛑 Audit fix (C-1 parity): do NOT redirect to /login on 401 when
+        // a token is already present in localStorage — that triggers the
+        // /dashboard redirect-loop. Surface the error and let the admin
+        // retry / sign out via the error card.
+        setLoadError('انتهت صلاحية الجلسة أو ليس لديك صلاحية الوصول. حاول تسجيل الدخول مرة أخرى.');
+        showToast('انتهت صلاحية الجلسة', 'error');
+      } else {
+        const message = `فشل تحميل أرقام الدفع (HTTP ${response.status}).`;
+        setLoadError(message);
+        showToast(message, 'error');
       }
-    } catch (err) {
-      showToast('فشل الاتصال بالخادم', 'error');
+    } catch (err: any) {
+      const message = err?.name === 'AbortError'
+        ? 'استغرق تحميل أرقام الدفع وقتاً طويلاً.'
+        : 'فشل الاتصال بالخادم';
+      setLoadError(message);
+      showToast(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -232,6 +259,33 @@ export default function PaymentNumbersPage() {
 
         {loading ? (
           <div className="loading-state"><div className="spinner spinner-lg" /></div>
+        ) : loadError ? (
+          // 🛑 Audit fix (C-2 + M-3): render a visible retry card so the
+          // admin can recover from a failed numbers fetch — with a
+          // "Sign in again" escape hatch for genuine 401s.
+          <div className="card bg-white border border-red-100 shadow-sm rounded-2xl py-16 text-center">
+            <div className="empty-state-icon bg-red-50 w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-inner"><AlertTriangleIcon size={48} className="text-error" /></div>
+            <h3 className="text-2xl font-black text-gray-800">تعذّر تحميل أرقام الدفع</h3>
+            <p className="text-gray-500 font-medium text-lg mt-2 mb-8 max-w-md mx-auto leading-relaxed">{loadError}</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+              <button
+                onClick={() => { setLoadError(null); fetchNumbers(); }}
+                className="btn btn-primary px-6 py-3 rounded-xl shadow-lg shadow-blue-200 font-bold"
+              >
+                <CheckCircleIcon size={18} className="ml-2 inline" /> إعادة المحاولة
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.removeItem('token');
+                  document.cookie = 'token=; path=/; max-age=0';
+                  router.push('/login');
+                }}
+                className="btn btn-outline px-6 py-3 rounded-xl font-bold"
+              >
+                تسجيل الدخول من جديد
+              </button>
+            </div>
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="card">

@@ -38,3 +38,10 @@ workers/vod-engine/.env
 # Windows files
 desktop.ini
 nul
+
+# Pipeline debug artifacts (un-prefixed, e.g. _audit_*.cjs, _capture_*.cjs)
+frontend/_*.cjs
+
+# Worker runtime log
+workers/vod-engine/server.err
+workers/vod-engine/server.log

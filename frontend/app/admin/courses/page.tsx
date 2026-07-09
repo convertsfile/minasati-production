@@ -26,6 +26,9 @@ export default function AdminCoursesPage() {
   const router = useRouter();
   const [courses, setCourses] = useState<Course[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // 🛑 Audit fix (C-6): explicit error state so the admin sees a visible
+  // retry card instead of an infinite spinner when /admin/courses fails.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [formData, setFormData] = useState({
@@ -60,24 +63,55 @@ export default function AdminCoursesPage() {
 
   const fetchCourses = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const token = getToken();
-      const res = await fetch(`${API_URL}/api/admin/courses`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
+      // 🛑 Audit fix (C-6): bound the request with a timeout so a dead
+      // backend cannot leave the page on an infinite spinner.
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 22000);
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}/api/admin/courses`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          },
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
       if (res.status === 401 || res.status === 403) {
-        router.push('/login');
+        // 🛑 Audit fix (C-1): do NOT redirect to /login on a 401 from a
+        // protected admin endpoint when the user already has a valid-looking
+        // token in storage. The previous redirect caused a loop:
+        //   /admin/courses  → 401 → /login  → token still in localStorage
+        //   → /dashboard   (admin sidebar lost, retry card unreachable)
+        // Instead, surface a visible error and let the admin retry. If the
+        // session is truly gone, the next /auth/me call from the global
+        // axios layer will trigger the proper /login?session_expired flow.
+        setLoadError('انتهت صلاحية الجلسة أو ليس لديك صلاحية الوصول إلى هذه الصفحة. حاول تسجيل الدخول مرة أخرى.');
+        setCourses([]);
+        return;
+      }
+
+      if (!res.ok) {
+        setLoadError(`تعذّر تحميل الكورسات (HTTP ${res.status}).`);
+        setCourses([]);
         return;
       }
 
       const data = await res.json();
       setCourses(data.data || []);
-    } catch (err) {
-      showToast('فشل جلب الكورسات من الخادم', 'error');
+    } catch (err: any) {
+      console.error('Failed to fetch admin courses', err);
+      const message = err?.name === 'AbortError'
+        ? 'استغرق تحميل الكورسات وقتاً طويلاً. تحقق من اتصالك بالإنترنت وحاول مجدداً.'
+        : 'فشل جلب الكورسات من الخادم';
+      setLoadError(message);
+      showToast(message, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -285,6 +319,35 @@ export default function AdminCoursesPage() {
         {isLoading && courses.length === 0 ? (
           <div className="loading-state">
             <div className="spinner spinner-lg"></div>
+          </div>
+        ) : loadError ? (
+          // 🛑 Audit fix (C-1 + C-6): visible error card with retry button.
+          // On 401/403 we offer both "Retry" and "Sign in again" so the admin
+          // can recover without the redirect-loop to /dashboard.
+          <div className="card bg-white border border-red-100 shadow-sm rounded-2xl py-16 text-center">
+            <div className="empty-state-icon bg-red-50 w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-inner"><AlertTriangleIcon size={48} className="text-error" /></div>
+            <h3 className="text-2xl font-black text-gray-800">تعذّر تحميل الكورسات</h3>
+            <p className="text-gray-500 font-medium text-lg mt-2 mb-8 max-w-md mx-auto leading-relaxed">{loadError}</p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+              <button
+                onClick={() => { setLoadError(null); fetchCourses(); }}
+                className="btn btn-primary px-6 py-3 rounded-xl shadow-lg shadow-blue-200 font-bold"
+              >
+                <CheckIcon size={18} className="ml-2 inline" /> إعادة المحاولة
+              </button>
+              <button
+                onClick={() => {
+                  // Explicit sign-out path so the admin can recover from a
+                  // 401 without hitting the redirect loop.
+                  localStorage.removeItem('token');
+                  document.cookie = 'token=; path=/; max-age=0';
+                  router.push('/login');
+                }}
+                className="btn btn-outline px-6 py-3 rounded-xl font-bold"
+              >
+                تسجيل الدخول من جديد
+              </button>
+            </div>
           </div>
         ) : courses.length === 0 ? (
           <div className="empty-state">

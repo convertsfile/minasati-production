@@ -39,7 +39,10 @@ function OTPContent() {
 
   useEffect(() => {
     if (!tempUserId) {
-      showToast("رابط التحقق غير صالح", "error");
+      // Don't surface a toast on mount — the toast was firing in
+      // headless / mobile screenshots before the user had a chance
+      // to do anything. The submit handler still validates and
+      // surfaces the same message after a real attempt.
       return;
     }
 

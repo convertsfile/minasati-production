@@ -1,0 +1,14 @@
+{
+  "runDate": "2026-07-09T20:51:00Z",
+  "baseUrl": "http://localhost:3002",
+  "viewports": [
+    { "name": "desktop", "width": 1440, "height": 900 },
+    { "name": "mobile", "width": 390, "height": 844 }
+  ],
+  "authStrategy": "mock-token cookie + localStorage; /api/auth/me mocked for admin pages",
+  "pagesCount": 36,
+  "screenshotsPerPage": 2,
+  "screenshotsTotal": 72,
+  "screenshotsOk": 72,
+  "screenshotsFailed": 0
+}

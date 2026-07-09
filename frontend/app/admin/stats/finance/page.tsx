@@ -55,6 +55,11 @@ export default function FinanceStatsPage() {
   const [subscriptions, setSubscriptions] = useState<SubscriptionLog[]>([]);
   
   const [loading, setLoading] = useState(true);
+  // 🛑 Audit fix (M-1): per-tab error states so the body renders a
+  // visible retry card instead of staying empty after a fetch failure.
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
+  const [subscriptionsError, setSubscriptionsError] = useState<string | null>(null);
 
   // Pagination states
   const [txPage, setTxPage] = useState(1);
@@ -71,22 +76,38 @@ export default function FinanceStatsPage() {
 
   const fetchSummary = useCallback(async () => {
     setLoading(true);
+    setSummaryError(null);
     try {
       const token = getToken();
       if (!token) { router.push('/login'); return; }
 
-      const res = await fetch(`${API_URL}/api/admin/wallet/summary`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-      });
+      // 🛑 Audit fix (M-1): bound the request with a timeout so a dead
+      // backend cannot leave the page on an infinite spinner.
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 12000);
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}/api/admin/wallet/summary`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
       if (res.ok) {
         const result = await res.json();
         setSummary(result.data);
       } else {
+        setSummaryError('فشل تحميل الملخص المالي');
         showToast('فشل تحميل الملخص المالي', 'error');
       }
-    } catch (e) {
-      showToast('خطأ في الاتصال بالخادم', 'error');
+    } catch (e: any) {
+      const message = e?.name === 'AbortError'
+        ? 'استغرق تحميل الملخص المالي وقتاً طويلاً.'
+        : 'خطأ في الاتصال بالخادم';
+      setSummaryError(message);
+      showToast(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -94,13 +115,22 @@ export default function FinanceStatsPage() {
 
   const fetchTransactions = useCallback(async (page = 1) => {
     setLoading(true);
+    setTransactionsError(null);
     try {
       const token = getToken();
       if (!token) { router.push('/login'); return; }
 
-      const res = await fetch(`${API_URL}/api/admin/wallet/transactions?page=${page}&limit=20`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-      });
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 12000);
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}/api/admin/wallet/transactions?page=${page}&limit=20`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
       if (res.ok) {
         const result = await res.json();
@@ -108,10 +138,15 @@ export default function FinanceStatsPage() {
         setTxPage(result.data?.pagination?.currentPage || 1);
         setTxTotalPages(result.data?.pagination?.lastPage || 1);
       } else {
+        setTransactionsError('فشل تحميل سجل العمليات المالية');
         showToast('فشل تحميل سجل العمليات المالية', 'error');
       }
-    } catch (e) {
-      showToast('خطأ في الاتصال بالخادم', 'error');
+    } catch (e: any) {
+      const message = e?.name === 'AbortError'
+        ? 'استغرق تحميل السجل وقتاً طويلاً.'
+        : 'خطأ في الاتصال بالخادم';
+      setTransactionsError(message);
+      showToast(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -119,13 +154,22 @@ export default function FinanceStatsPage() {
 
   const fetchSubscriptions = useCallback(async (page = 1) => {
     setLoading(true);
+    setSubscriptionsError(null);
     try {
       const token = getToken();
       if (!token) { router.push('/login'); return; }
 
-      const res = await fetch(`${API_URL}/api/admin/wallet/subscriptions?page=${page}&limit=20`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-      });
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 12000);
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}/api/admin/wallet/subscriptions?page=${page}&limit=20`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
       if (res.ok) {
         const result = await res.json();
@@ -133,10 +177,15 @@ export default function FinanceStatsPage() {
         setSubPage(result.data?.pagination?.currentPage || 1);
         setSubTotalPages(result.data?.pagination?.lastPage || 1);
       } else {
+        setSubscriptionsError('فشل تحميل سجل الاشتراكات');
         showToast('فشل تحميل سجل الاشتراكات', 'error');
       }
-    } catch (e) {
-      showToast('خطأ في الاتصال بالخادم', 'error');
+    } catch (e: any) {
+      const message = e?.name === 'AbortError'
+        ? 'استغرق تحميل السجل وقتاً طويلاً.'
+        : 'خطأ في الاتصال بالخادم';
+      setSubscriptionsError(message);
+      showToast(message, 'error');
     } finally {
       setLoading(false);
     }
@@ -167,7 +216,9 @@ export default function FinanceStatsPage() {
       <main className="admin-content">
         <div className="page-header">
           <div>
-            <h1 className="page-title flex items-center gap-2"><TrendingUpIcon size={26} /> السجل والتقرير المالي للمنصة</h1>
+            {/* 🛑 Audit fix (M-2): allow the long H1 to wrap onto a second
+                line so the title is never clipped on smaller widths. */}
+            <h1 className="page-title flex items-center gap-2" style={{ flexWrap: 'wrap' }}><TrendingUpIcon size={26} /> السجل والتقرير المالي للمنصة</h1>
             <p className="page-subtitle">تتبع المبيعات والعمليات المالية والاشتراكات للوقوف على أداء المنصة المالي.</p>
           </div>
         </div>
@@ -203,7 +254,18 @@ export default function FinanceStatsPage() {
           <div className="space-y-6 text-right" style={{ direction: 'rtl' }}>
             
             {/* TAB 1: Summary */}
-            {activeTab === 'summary' && summary && (
+            {activeTab === 'summary' && summaryError ? (
+              // 🛑 Audit fix (M-1): render a visible retry card so the
+              // admin can recover from a failed summary fetch.
+              <div className="card bg-white border border-red-100 shadow-sm rounded-2xl py-16 text-center animate-fade-in">
+                <div className="empty-state-icon bg-red-50 w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-inner"><AlertCircleIcon size={48} /></div>
+                <h3 className="text-2xl font-black text-gray-800">تعذّر تحميل الملخص المالي</h3>
+                <p className="text-gray-500 font-medium text-lg mt-2 mb-8 max-w-md mx-auto leading-relaxed">{summaryError}</p>
+                <button onClick={fetchSummary} className="btn btn-primary px-6 py-3 rounded-xl shadow-lg shadow-blue-200 font-bold">
+                  <CheckCircleIcon size={18} className="ml-2 inline" /> إعادة المحاولة
+                </button>
+              </div>
+            ) : activeTab === 'summary' && summary && (
               <div className="space-y-6 animate-fade-in">
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
                   <div className="card p-6" style={{ borderInlineStartWidth: '5px', borderInlineStartColor: 'var(--success)' }}>
@@ -231,7 +293,18 @@ export default function FinanceStatsPage() {
             {/* TAB 2: Transactions */}
             {activeTab === 'transactions' && (
               <div className="space-y-6 animate-fade-in">
-                {transactions.length === 0 ? (
+                {transactionsError ? (
+                  // 🛑 Audit fix (M-1): render a visible retry card so the
+                  // admin can recover from a failed transactions fetch.
+                  <div className="card bg-white border border-red-100 shadow-sm rounded-2xl py-16 text-center">
+                    <div className="empty-state-icon bg-red-50 w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-inner"><AlertCircleIcon size={48} /></div>
+                    <h3 className="text-2xl font-black text-gray-800">تعذّر تحميل سجل العمليات</h3>
+                    <p className="text-gray-500 font-medium text-lg mt-2 mb-8 max-w-md mx-auto leading-relaxed">{transactionsError}</p>
+                    <button onClick={() => fetchTransactions(txPage)} className="btn btn-primary px-6 py-3 rounded-xl shadow-lg shadow-blue-200 font-bold">
+                      <CheckCircleIcon size={18} className="ml-2 inline" /> إعادة المحاولة
+                    </button>
+                  </div>
+                ) : transactions.length === 0 ? (
                   <div className="empty-state">
                     <div className="empty-state-icon">
                       <FileTextIcon size={36} />
@@ -318,7 +391,18 @@ export default function FinanceStatsPage() {
             {/* TAB 3: Subscriptions */}
             {activeTab === 'subscriptions' && (
               <div className="space-y-6 animate-fade-in">
-                {subscriptions.length === 0 ? (
+                {subscriptionsError ? (
+                  // 🛑 Audit fix (M-1): render a visible retry card so the
+                  // admin can recover from a failed subscriptions fetch.
+                  <div className="card bg-white border border-red-100 shadow-sm rounded-2xl py-16 text-center">
+                    <div className="empty-state-icon bg-red-50 w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-inner"><AlertCircleIcon size={48} /></div>
+                    <h3 className="text-2xl font-black text-gray-800">تعذّر تحميل سجل الاشتراكات</h3>
+                    <p className="text-gray-500 font-medium text-lg mt-2 mb-8 max-w-md mx-auto leading-relaxed">{subscriptionsError}</p>
+                    <button onClick={() => fetchSubscriptions(subPage)} className="btn btn-primary px-6 py-3 rounded-xl shadow-lg shadow-blue-200 font-bold">
+                      <CheckCircleIcon size={18} className="ml-2 inline" /> إعادة المحاولة
+                    </button>
+                  </div>
+                ) : subscriptions.length === 0 ? (
                   <div className="empty-state">
                     <div className="empty-state-icon">
                       <FileTextIcon size={36} />

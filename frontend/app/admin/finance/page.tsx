@@ -53,6 +53,14 @@ export default function AdminFinancePage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<'summary' | 'students'>('summary');
 
+  // 🛑 Audit fix (C-3 / M-1): per-tab error states so each panel can
+  // surface a visible retry card (with a 12s AbortController timeout)
+  // instead of staying silently blank. The previous code only fired a
+  // toast and the tab body kept gating on the data variable.
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [studentsError, setStudentsError] = useState<string | null>(null);
+  const [transactionsError, setTransactionsError] = useState<string | null>(null);
+
   // 🚀 نظام الإشعارات الموحد
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({ visible: false, message: '', type: 'success' });
   const showToast = (message: string, type: 'success' | 'error') => {
@@ -67,15 +75,25 @@ export default function AdminFinancePage() {
   }, []);
 
   const fetchSummary = async () => {
+    setSummaryError(null);
     try {
       const token = getToken();
       // ⚠️ /api/admin/finance/summary is BROKEN (404). The real summary lives
       // at /api/admin/wallet/summary and returns
       // {period:{start,end}, totalTopups, topupsCount, courseSalesCount, students:{...}}.
       // Map the camelCase fields into the page's FinanceSummary shape.
-      const res = await fetch(`${API_URL}/api/admin/wallet/summary`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // 🛑 Audit fix (C-3 / M-1): 22s AbortController timeout.
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 22000);
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}/api/admin/wallet/summary`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
       if (res.ok) {
         const data = await res.json();
         const d = data.data || {};
@@ -92,25 +110,39 @@ export default function AdminFinancePage() {
           dailySales: [],
         });
       } else {
-        showToast('فشل جلب ملخص المالية', 'error');
+        setSummaryError(`فشل جلب ملخص المالية (HTTP ${res.status}). حاول مجدداً.`);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      showToast('خطأ في الاتصال بالخادم', 'error');
+      setSummaryError(
+        e?.name === 'AbortError'
+          ? 'استغرق تحميل ملخص المالية وقتاً طويلاً. تحقق من اتصالك وحاول مجدداً.'
+          : 'خطأ في الاتصال بالخادم'
+      );
     }
   };
 
   const fetchStudents = async () => {
     setLoading(true);
+    setStudentsError(null);
     try {
       const token = getToken();
       // ⚠️ /api/admin/finance/per-student is BROKEN (404). Use the global
       // /api/admin/wallet/transactions which is paginated; for the per-student
       // list we fall back to /api/admin/student-progress which is the closest
       // inventory-supported surface that returns a per-student row.
-      const res = await fetch(`${API_URL}/api/admin/student-progress?limit=50`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // 🛑 Audit fix (C-3 / M-1): 22s AbortController timeout.
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 22000);
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}/api/admin/student-progress?limit=50`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
       if (res.ok) {
         const data = await res.json();
         const rawStudents = data.data?.data || data.data || [];
@@ -124,10 +156,16 @@ export default function AdminFinancePage() {
           purchasesCount: 0,
         }));
         setStudents(mappedStudents);
+      } else {
+        setStudentsError(`فشل جلب قائمة الطلاب (HTTP ${res.status}).`);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      showToast('فشل جلب قائمة الطلاب', 'error');
+      setStudentsError(
+        e?.name === 'AbortError'
+          ? 'استغرق تحميل قائمة الطلاب وقتاً طويلاً. تحقق من اتصالك وحاول مجدداً.'
+          : 'خطأ في الاتصال بالخادم'
+      );
     } finally {
       setLoading(false);
     }
@@ -135,6 +173,7 @@ export default function AdminFinancePage() {
 
   const fetchTransactions = async (student: StudentFinance) => {
     setSelectedStudent(student);
+    setTransactionsError(null);
     try {
       const token = getToken();
       // ⚠️ /api/admin/students/{id}/transactions is BROKEN (404). The real
@@ -142,18 +181,31 @@ export default function AdminFinancePage() {
       // /api/admin/wallet/student/{user}/transactions and returns
       // {transactions:[...], walletBalance, totalTopups, totalPurchases,
       //  pagination:{...}}.
-      const res = await fetch(`${API_URL}/api/admin/wallet/student/${student.userId}/transactions`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // 🛑 Audit fix (C-3 / M-1): 22s AbortController timeout.
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 22000);
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}/api/admin/wallet/student/${student.userId}/transactions`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
       if (res.ok) {
         const data = await res.json();
         setTransactions(data.data);
       } else {
-        showToast('فشل جلب سجل العمليات', 'error');
+        setTransactionsError(`فشل جلب سجل العمليات (HTTP ${res.status}).`);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      showToast('خطأ في الاتصال بالخادم', 'error');
+      setTransactionsError(
+        e?.name === 'AbortError'
+          ? 'استغرق تحميل سجل العمليات وقتاً طويلاً. حاول مجدداً.'
+          : 'خطأ في الاتصال بالخادم'
+      );
     }
   };
 
@@ -189,7 +241,19 @@ export default function AdminFinancePage() {
           </button>
         </div>
 
-        {tab === 'summary' && summary && (
+        {tab === 'summary' && summaryError && (
+          // 🛑 Audit fix (C-3 / M-1): per-tab retry card for the summary panel.
+          <div className="card bg-white border border-red-100 shadow-sm rounded-2xl py-12 text-center">
+            <div className="empty-state-icon bg-red-50 w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-5 shadow-inner" style={{ color: 'var(--error)' }}>⚠️</div>
+            <h3 className="text-xl font-black text-gray-800">تعذّر تحميل ملخص المالية</h3>
+            <p className="text-gray-500 font-medium mt-2 mb-6 max-w-md mx-auto leading-relaxed">{summaryError}</p>
+            <button onClick={() => { setSummaryError(null); fetchSummary(); }} className="btn btn-primary px-6 py-3 rounded-xl font-bold">
+              إعادة المحاولة
+            </button>
+          </div>
+        )}
+
+        {tab === 'summary' && !summaryError && summary && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {/* Summary Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
@@ -235,6 +299,18 @@ export default function AdminFinancePage() {
           </div>
         )}
 
+        {tab === 'students' && studentsError && !selectedStudent && (
+          // 🛑 Audit fix (C-3 / M-1): per-tab retry card for the students list.
+          <div className="card bg-white border border-red-100 shadow-sm rounded-2xl py-12 text-center">
+            <div className="empty-state-icon bg-red-50 w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-5 shadow-inner" style={{ color: 'var(--error)' }}>⚠️</div>
+            <h3 className="text-xl font-black text-gray-800">تعذّر تحميل قائمة الطلاب</h3>
+            <p className="text-gray-500 font-medium mt-2 mb-6 max-w-md mx-auto leading-relaxed">{studentsError}</p>
+            <button onClick={() => { setStudentsError(null); fetchStudents(); }} className="btn btn-primary px-6 py-3 rounded-xl font-bold">
+              إعادة المحاولة
+            </button>
+          </div>
+        )}
+
         {tab === 'students' && (
           <>
             {selectedStudent ? (
@@ -251,6 +327,18 @@ export default function AdminFinancePage() {
                     <span className="badge badge-warning">📚 مشتريات: {selectedStudent.purchasesCount}</span>
                   </div>
                 </div>
+                {transactionsError && !transactions && (
+                  // 🛑 Audit fix (C-3 / M-1): per-tab retry card for the
+                  // per-student transactions ledger.
+                  <div className="card bg-white border border-red-100 shadow-sm rounded-2xl py-12 text-center">
+                    <div className="empty-state-icon bg-red-50 w-20 h-20 mx-auto rounded-full flex items-center justify-center mb-5 shadow-inner" style={{ color: 'var(--error)' }}>⚠️</div>
+                    <h3 className="text-xl font-black text-gray-800">تعذّر تحميل سجل العمليات</h3>
+                    <p className="text-gray-500 font-medium mt-2 mb-6 max-w-md mx-auto leading-relaxed">{transactionsError}</p>
+                    <button onClick={() => fetchTransactions(selectedStudent)} className="btn btn-primary px-6 py-3 rounded-xl font-bold">
+                      إعادة المحاولة
+                    </button>
+                  </div>
+                )}
                 {transactions && (
                   <div className="card">
                     <h4 style={{ fontWeight: 700, marginBottom: '1rem' }}>سجل العمليات (Ledger)</h4>

@@ -74,6 +74,10 @@ export default function StudentDashboard() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  // 🛑 Audit fix (C-5): explicit error state so the student sees a
+  // visible retry card instead of an infinite spinner when /auth/me or
+  // the dashboard data endpoints fail.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [redeemCode, setRedeemCode] = useState('');
   const [processing, setProcessing] = useState(false);
   const [codeSuccess, setCodeSuccess] = useState(false);
@@ -110,11 +114,24 @@ export default function StudentDashboard() {
 
   const fetchData = async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const token = getToken();
       if (!token) return;
 
-      const userRes = await fetch(`${API_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
+      // 🛑 Audit fix (C-4): bound the request with a 22s timeout so a dead
+      // backend cannot leave the dashboard on a perpetual spinner, while
+      // still leaving enough headroom for slow first-paint on cold
+      // connections (e.g. dev env warming up Laravel Octane).
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 22000);
+
+      let userRes: Response;
+      try {
+        userRes = await fetch(`${API_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
+      } finally {
+        // /me is short-lived enough to keep the timeout alive.
+      }
       if (userRes.ok) {
         const userDataJson = await userRes.json();
         // /auth/me returns {status:"success", data:UserResource} →
@@ -133,9 +150,15 @@ export default function StudentDashboard() {
           governorate: data?.governorate || '',
           walletBalance: data?.wallet_balance || data?.balance || data?.walletBalance || 0,
         });
+      } else if (userRes.status === 401) {
+        // /auth/me is an auth endpoint; honor the global redirect here.
+        window.location.href = '/login?session_expired=true';
+        return;
+      } else {
+        setLoadError('تعذّر الوصول إلى بيانات حسابك من الخادم.');
       }
 
-      const progressRes = await fetch(`${API_URL}/api/courses/my-courses`, { headers: { Authorization: `Bearer ${token}` } });
+      const progressRes = await fetch(`${API_URL}/api/courses/my-courses`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
       if (progressRes.ok) {
         const progData = await progressRes.json();
         const coursesArray = progData.data?.courses || progData.data || [];
@@ -152,19 +175,27 @@ export default function StudentDashboard() {
         }));
       }
 
-      const notifRes = await fetch(`${API_URL}/api/notifications`, { headers: { Authorization: `Bearer ${token}` } });
+      const notifRes = await fetch(`${API_URL}/api/notifications`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
       if (notifRes.ok) {
         const notifData = await notifRes.json();
         setNotifications(notifData.data?.notifications || notifData.data || []);
         setUnreadCount(notifData.data?.unreadCount || 0);
       }
 
-      const examsRes = await fetch(`${API_URL}/api/exams/my-results`, { headers: { Authorization: `Bearer ${token}` } });
+      const examsRes = await fetch(`${API_URL}/api/exams/my-results`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
       if (examsRes.ok) {
         const examsData = await examsRes.json();
         setExamAttempts(examsData.data || []);
       }
-    } catch (err) { console.error("Fetch Data Error:", err); }
+      window.clearTimeout(timeoutId);
+    } catch (err: any) {
+      console.error("Fetch Data Error:", err);
+      setLoadError(
+        err?.name === 'AbortError'
+          ? 'استغرق تحميل لوحة التحكم وقتاً طويلاً. تحقق من اتصالك وحاول مجدداً.'
+          : 'حدث خطأ أثناء تحميل لوحة التحكم.'
+      );
+    }
     finally { setLoading(false); }
   };
 
@@ -224,6 +255,32 @@ export default function StudentDashboard() {
         <Navbar />
         <div className="loading-state" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="spinner spinner-lg"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // 🛑 Audit fix (C-5): when the data endpoints failed but the user
+  // object somehow resolved (or the dashboard data is unusable), show a
+  // visible retry card instead of an empty shell.
+  if (loadError) {
+    return (
+      <div className="page-container" dir="rtl">
+        <Navbar />
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}>
+          <div className="card bg-white border border-red-100 shadow-xl rounded-3xl max-w-md w-full p-8 text-center">
+            <div className="flex justify-center mb-5">
+              <AlertCircleIcon size={56} />
+            </div>
+            <h2 className="text-2xl font-black text-gray-900 mb-3">تعذّر تحميل لوحة التحكم</h2>
+            <p className="text-gray-600 font-medium leading-relaxed mb-7">{loadError}</p>
+            <button
+              onClick={() => { setLoadError(null); setLoading(true); fetchData(); }}
+              className="btn btn-primary px-6 py-3 font-bold rounded-xl shadow-lg shadow-blue-200"
+            >
+              إعادة المحاولة
+            </button>
+          </div>
         </div>
       </div>
     );

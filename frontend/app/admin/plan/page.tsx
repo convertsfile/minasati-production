@@ -24,6 +24,9 @@ export default function AdminPlanPage() {
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState(false);
   const [limits, setLimits] = useState<LimitInfo | null>(null);
+  // 🛑 Audit fix (C-3): explicit error state so the admin sees a visible
+  // retry card instead of a blank page when /admin/limits fails.
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     checkAdminAuth();
@@ -67,17 +70,37 @@ export default function AdminPlanPage() {
 
   const fetchPlanLimits = async (token: string) => {
     try {
-      const res = await fetch(`${API_URL}/api/admin/limits`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-      });
+      // 🛑 Audit fix (C-3): bound the request with a timeout so a dead
+      // backend cannot leave the page on an infinite spinner.
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 12000);
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}/api/admin/limits`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.data) {
           setLimits(data.data);
+          setLoadError(null);
+        } else {
+          setLoadError('لم يصلنا رد صالح من الخادم بخصوص باقتك.');
         }
+      } else {
+        setLoadError(`تعذّر تحميل بيانات الباقة (HTTP ${res.status}).`);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to fetch plan limits:', e);
+      setLoadError(
+        e?.name === 'AbortError'
+          ? 'استغرقت العملية وقتاً طويلاً. تحقق من اتصالك بالإنترنت وحاول مجدداً.'
+          : 'حدث خطأ في الاتصال بالخادم أثناء جلب بيانات الباقة.'
+      );
     } finally {
       setLoading(false);
     }
@@ -94,8 +117,52 @@ export default function AdminPlanPage() {
     );
   }
 
-  if (!authorized || !limits) {
+  if (!authorized) {
     return null;
+  }
+
+  // 🛑 Audit fix (C-3): render a visible error card with retry when the
+  // limits endpoint fails, instead of returning null and leaving a blank
+  // page behind.
+  if (loadError || !limits) {
+    return (
+      <div className="admin-layout">
+        <AdminSidebar />
+        <main className="admin-content">
+          <div className="page-header">
+            <h1 className="page-title">
+              <AwardIcon size={28} />
+              باقة المنصة واستهلاك الموارد
+            </h1>
+            <p className="page-subtitle">
+              تتبع استهلاك الموارد المتاحة في باقتك الحالية وتواصل معنا للترقية لتجنب التوقف.
+            </p>
+          </div>
+          <div className="card bg-white border border-red-100 shadow-sm rounded-2xl py-16 text-center">
+            <div className="empty-state-icon bg-red-50 w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-inner">
+              <AlertTriangleIcon size={48} className="text-error" />
+            </div>
+            <h3 className="text-2xl font-black text-gray-800">تعذّر تحميل بيانات الباقة</h3>
+            <p className="text-gray-500 font-medium text-lg mt-2 mb-8 max-w-md mx-auto leading-relaxed">
+              {loadError || 'لا تتوفر بيانات الباقة حالياً. حاول مرة أخرى بعد قليل.'}
+            </p>
+            <button
+              onClick={() => {
+                const token = getToken();
+                if (token) {
+                  setLoading(true);
+                  setLoadError(null);
+                  fetchPlanLimits(token);
+                }
+              }}
+              className="btn btn-primary px-6 py-3 rounded-xl shadow-lg shadow-blue-200 font-bold"
+            >
+              إعادة المحاولة
+            </button>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   const formatBytes = (bytes: number): string => {
