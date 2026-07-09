@@ -286,13 +286,13 @@ export default function PendingStudentsPage() {
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center', fontWeight: '600' }} className="text-primary">{student.academicYear}</td>
-                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center' }}>{student.governorate || '-'}</td>
-                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center', fontFamily: 'monospace' }} dir="ltr">{student.phone}</td>
-                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center', fontFamily: 'monospace' }} dir="ltr">{student.parentPhone}</td>
+                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center', fontWeight: '600' }} className="text-primary">{student.academicYear || <span className="text-muted">-</span>}</td>
+                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center' }}>{student.governorate || <span className="text-muted">-</span>}</td>
+                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center', fontFamily: 'monospace' }} dir="ltr">{student.phone || <span className="text-muted">-</span>}</td>
+                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center', fontFamily: 'monospace' }} dir="ltr">{student.parentPhone || <span className="text-muted">-</span>}</td>
                       <td style={{ padding: '1rem 1.25rem' }}>
-                        <div className="text-xs font-semibold">{student.school || '-'}</div>
-                        <div className="text-[10px] text-muted">{student.parentJob || '-'}</div>
+                        <div className="text-xs font-semibold">{student.school || <span className="text-muted">-</span>}</div>
+                        <div className="text-[10px] text-muted">{student.parentJob || <span className="text-muted">-</span>}</div>
                       </td>
                       <td style={{ padding: '1rem 1.25rem', textAlign: 'center' }}>
                         {student.idImage ? (
@@ -309,22 +309,27 @@ export default function PendingStudentsPage() {
                         )}
                       </td>
                       <td style={{ padding: '1rem 1.25rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        {new Date(student.createdAt).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric' })}
+                        {(() => {
+                          if (!student.createdAt) return <span className="text-muted">-</span>;
+                          const d = new Date(student.createdAt);
+                          if (isNaN(d.getTime())) return <span className="text-muted">-</span>;
+                          return d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: 'numeric', minute: 'numeric' });
+                        })()}
                       </td>
-                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center' }}>
+                      <td style={{ padding: '1rem 1.25rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
                         <div className="flex gap-2 justify-center">
                           <button
                             onClick={() => setApproveModal(student)}
-                            className="btn btn-sm btn-success"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.75rem', borderRadius: '8px' }}
+                            className="btn btn-sm"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.35rem 0.85rem', borderRadius: '8px', background: 'var(--success)', color: '#fff', border: 'none', fontWeight: 700 }}
                           >
                             <CheckIcon size={14} />
                             موافقة
                           </button>
                           <button
                             onClick={() => setRejectModal(student)}
-                            className="btn btn-sm btn-outline"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.75rem', borderRadius: '8px', border: '1px solid var(--error)', color: 'var(--error)', background: 'transparent' }}
+                            className="btn btn-sm"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.35rem 0.85rem', borderRadius: '8px', background: '#fff', color: 'var(--error)', border: '1.5px solid var(--error)', fontWeight: 700 }}
                           >
                             <XIcon size={14} />
                             رفض

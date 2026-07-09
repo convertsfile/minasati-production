@@ -85,7 +85,19 @@ export default function StudentForumPage() {
 
       if (res.ok) {
         const data = await res.json();
-        const fetchedPosts = data.data.posts;
+        // Defensive: API may return either {data: {posts, ...}} or a flat
+        // array, and `data.data.posts` can be undefined if the envelope
+        // shape drifts. Always coerce to an array so downstream `posts.length`
+        // / `posts.map(...)` cannot throw "Cannot read properties of
+        // undefined (reading 'length')" and replace the whole page with
+        // the Next.js dev error overlay.
+        const fetchedPosts: ForumPost[] = Array.isArray(data?.data?.posts)
+          ? data.data.posts
+          : Array.isArray(data?.data)
+            ? data.data
+            : [];
+        const pagination = data?.data?.pagination;
+        const year = data?.data?.academicYear;
 
         if (append) {
           setPosts(prev => [...prev, ...fetchedPosts]);
@@ -93,12 +105,18 @@ export default function StudentForumPage() {
           setPosts(fetchedPosts);
         }
 
-        if (data.data.academicYear) {
-          setAcademicYear(data.data.academicYear);
+        if (year) {
+          setAcademicYear(year);
         }
 
-        setCurrentPage(data.data.pagination.currentPage);
-        setLastPage(data.data.pagination.lastPage);
+        if (pagination) {
+          setCurrentPage(pagination.currentPage ?? 1);
+          setLastPage(pagination.lastPage ?? 1);
+        }
+      } else {
+        // API returned non-OK — make sure we don't leave a previous user's
+        // posts in state when re-fetching from page 1.
+        if (!append) setPosts([]);
       }
     } catch (err) {
       showToast('خطأ في جلب البيانات', 'error');
@@ -324,12 +342,12 @@ export default function StudentForumPage() {
           </form>
         </div>
 
-        {loading && posts.length === 0 ? (
+        {loading && (posts?.length ?? 0) === 0 ? (
           <div className="loading-state">
             <div className="spinner spinner-lg"></div>
             <p style={{ marginTop: '1rem' }}>جاري تحميل الأسئلة...</p>
           </div>
-        ) : posts.length === 0 ? (
+        ) : (posts?.length ?? 0) === 0 ? (
           <div className="empty-state">
             <div className="empty-state-icon">
               <FileTextIcon size={32} />
@@ -344,7 +362,7 @@ export default function StudentForumPage() {
               سجّل استفساراتك
             </h3>
 
-            {posts.map(post => (
+            {(posts ?? []).map(post => (
               <div key={post.id} className="card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
 
                 <div className="p-6" style={{ backgroundColor: 'rgba(0,0,0,0.03)' }}>

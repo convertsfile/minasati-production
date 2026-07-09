@@ -14,7 +14,18 @@ class LectureResource extends JsonResource
     public function toArray(Request $request): array
     {
         // 🚀 فحص الصلاحية الأمني قبل إرسال روابط البث الحساسة
-        $isAuthorized = Gate::allows('view', $this->resource);
+        $user = auth('sanctum')->user();
+        $isAuthorized = false;
+        if ($user) {
+            $isAuthorized = Gate::forUser($user)->allows('view', $this->resource);
+        }
+
+        $isUnlocked = false;
+        if (!$this->is_locked) {
+            $isUnlocked = true;
+        } elseif ($user) {
+            $isUnlocked = $isAuthorized;
+        }
 
         return [
             'id' => $this->id,
@@ -23,6 +34,7 @@ class LectureResource extends JsonResource
             'description' => $this->description,
             'orderIndex' => $this->order_index,
             'isLocked' => (bool) $this->is_locked,
+            'isUnlocked' => (bool) $isUnlocked,
             'videoDuration' => $this->video_duration, // بالثواني
             'maxViews' => $this->max_views,
 

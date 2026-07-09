@@ -259,7 +259,7 @@ function OTPContent() {
                 Minassati<span>.</span>
               </span>
             </Link>
-            <h1 className="branding-title">منصاتي</h1>
+            <h1 className="branding-title">منصتنا</h1>
             <p className="branding-subtitle">منصتك التعليمية الذكية</p>
           </div>
         </div>

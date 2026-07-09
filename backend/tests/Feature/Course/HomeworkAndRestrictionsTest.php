@@ -242,4 +242,34 @@ class HomeworkAndRestrictionsTest extends TestCase
         $examId = $response->json('data.examId');
         $this->assertEquals($exam->id, $examId, 'Returned exam must match the created one');
     }
+
+    public function test_student_without_purchase_cannot_access_any_locked_lecture()
+    {
+        $user = User::factory()->active()->create();
+        $course = Course::create(['title' => 'Biology 102', 'is_strict_order' => false]);
+
+        $lecture = Lecture::create([
+            'course_id' => $course->id,
+            'title' => 'Lec 1',
+            'order_index' => 1,
+            'is_locked' => true,
+        ]);
+
+        // Student has NOT purchased the course
+        $this->assertFalse($user->hasUnlockedLecture($lecture));
+    }
+
+    public function test_student_with_purchase_can_access_first_lecture_but_not_second_in_strict_order()
+    {
+        $user = User::factory()->active()->create();
+        $course = Course::create(['title' => 'Biology 103', 'is_strict_order' => true]);
+        $user->courses()->attach($course->id, ['access_type' => 'purchase']);
+
+        $lecture1 = Lecture::create(['course_id' => $course->id, 'title' => 'Lec 1', 'order_index' => 1, 'is_locked' => true]);
+        $lecture2 = Lecture::create(['course_id' => $course->id, 'title' => 'Lec 2', 'order_index' => 2, 'is_locked' => true]);
+
+        // Student has purchased the course -> L1 is unlocked (since it's first), L2 is locked
+        $this->assertTrue($user->hasUnlockedLecture($lecture1));
+        $this->assertFalse($user->hasUnlockedLecture($lecture2));
+    }
 }

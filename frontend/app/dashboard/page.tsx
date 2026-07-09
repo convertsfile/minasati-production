@@ -213,7 +213,12 @@ export default function StudentDashboard() {
   };
 
   /* ─── Loading ─── */
-  if (isChecking || loading) {
+  // Wait on the auth-guard check, the initial fetch, AND the userData
+  // object being non-null. Without the `!userData` clause, the dashboard
+  // would render an empty shell with "---" / "م" placeholders for ~3.5s
+  // while the API call is in flight. That looked broken in the screenshot
+  // audit. Now the full-page spinner is shown until real data arrives.
+  if (isChecking || loading || !userData) {
     return (
       <div className="page-container" dir="rtl">
         <Navbar />

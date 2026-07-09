@@ -75,7 +75,7 @@ export default function CoursePage() {
       const headers: Record<string, string> = { Accept: 'application/json' };
       if (token) headers.Authorization = `Bearer ${token}`;
 
-      const response = await fetch(`${API_URL}/api/courses/${courseId}`, { headers });
+      const response = await fetch(`${API_URL}/api/courses/${courseId}`, { headers, cache: 'no-store' });
 
       if (response.ok) {
         const data = await response.json();
@@ -97,6 +97,7 @@ export default function CoursePage() {
 
       const response = await fetch(`${API_URL}/api/wallet/balance`, {
         headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        cache: 'no-store'
       });
 
       if (response.ok) {
@@ -142,12 +143,7 @@ export default function CoursePage() {
         showToast('🎉 مبروك! تم الاشتراك في الكورس بنجاح.', 'success');
         
         setWalletBalance(data.data?.newBalance ?? (walletBalance - price));
-        setCourse(prev => prev ? { 
-          ...prev, 
-          isPurchased: true, 
-          is_purchased: true,
-          lectures: prev.lectures.map(l => ({ ...l, isLocked: false, is_locked: false })) 
-        } : null);
+        fetchCourse();
         
       } else {
         showToast(data.error || data.message || 'فشل شراء الكورس', 'error');
@@ -159,14 +155,18 @@ export default function CoursePage() {
     }
   };
 
-  const handleLectureClick = (lectureId: number, isPurchased: boolean, isLocked: boolean) => {
+  const handleLectureClick = (lectureId: number, isPurchased: boolean, isLocked: boolean, isUnlocked: boolean) => {
     if (!isLoggedIn) {
       showToast('يجب تسجيل الدخول لفتح المحاضرات', 'error');
       router.push('/login');
       return;
     }
-    if (!isPurchased && isLocked) {
-      showToast('يجب شراء الكورس أولاً لفتح المحاضرات', 'error');
+    if (!isUnlocked) {
+      if (!isPurchased) {
+        showToast('يجب شراء الكورس أولاً لفتح المحاضرات', 'error');
+      } else {
+        showToast('هذه المحاضرة مغلقة، يرجى إنهاء المحاضرة السابقة وامتحاناتها أولاً!', 'error');
+      }
       return;
     }
     router.push(`/lectures/${lectureId}`);
@@ -279,30 +279,39 @@ export default function CoursePage() {
             ) : course.lectures.map((lecture, index) => {
               
               const isLocked = lecture.isLocked ?? lecture.is_locked ?? true;
-              const isAvailable = isPurchased || !isLocked;
+              const isUnlocked = (lecture as any).isUnlocked ?? (lecture as any).is_unlocked ?? !isLocked;
+              const isAvailable = isUnlocked;
               
               const vStatus = lecture.video_status ?? lecture.encodingStatus ?? 'completed';
               const isProcessing = vStatus === 'processing';
               const isFailed = vStatus === 'failed';
               const isReady = !isProcessing && !isFailed;
               
+              const isClickable = isAvailable && isReady;
+
               return (
                 <div
                   key={lecture.id}
                   onClick={() => {
-                    if (isAvailable && isReady) {
-                      handleLectureClick(lecture.id, isPurchased, isLocked);
+                    if (!isAvailable) {
+                      // إذا لم يشتر الكورس أو المحاضرة مغلقة — لا يحدث شيء مرئي عند الضغط
+                      handleLectureClick(lecture.id, isPurchased, isLocked, isUnlocked);
+                    } else if (!isReady) {
+                      showToast('الفيديو جاري تجهيزه حالياً', 'error');
+                    } else {
+                      handleLectureClick(lecture.id, isPurchased, isLocked, isUnlocked);
                     }
                   }}
                   className="card flex items-center justify-between p-4 transition-all"
                   style={{
-                    cursor: (isAvailable && isReady) ? 'pointer' : 'default',
-                    opacity: isAvailable ? 1 : 0.7,
+                    cursor: isClickable ? 'pointer' : 'not-allowed',
+                    opacity: isAvailable ? 1 : 0.6,
                     border: '1px solid var(--border)',
                     borderInlineStart: isAvailable ? '4px solid var(--success)' : '4px solid var(--text-muted)',
+                    userSelect: 'none',
                   }}
                   onMouseEnter={(e) => {
-                    if (isAvailable && isReady) {
+                    if (isClickable) {
                       e.currentTarget.style.transform = 'translateX(-4px)';
                       e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
                     }
@@ -317,15 +326,21 @@ export default function CoursePage() {
                       {index + 1}
                     </div>
                     <div>
-                      <h3 className={`font-bold ${isAvailable ? 'text-primary' : 'text-gray-600'}`}>
+                      <h3 className={`font-bold ${isAvailable ? 'text-primary' : 'text-gray-500'}`}>
                         {lecture.title}
                       </h3>
                       {lecture.description && (
                         <p className="text-sm text-muted mt-1 line-clamp-1">{lecture.description}</p>
                       )}
+                      {!isAvailable && !isPurchased && (
+                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>اشترِ الكورس للوصول</p>
+                      )}
+                      {!isAvailable && isPurchased && (
+                        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>أكمل المحاضرة السابقة أولاً</p>
+                      )}
                     </div>
                   </div>
-
+ 
                   {isAvailable && (
                     <div className="mx-4 flex-shrink-0">
                       {isProcessing && (
@@ -343,7 +358,7 @@ export default function CoursePage() {
                     </span>
                   )}
                   
-                  {(!isAvailable || isLocked) && !isPurchased && (
+                  {!isAvailable && (
                     <div className="text-muted shrink-0">
                       <LockIcon size={22} />
                     </div>

@@ -83,26 +83,12 @@ export default function Home() {
   useEffect(() => {
     checkAuth();
     fetchLatestCourses();
-    // Scroll-triggered animations
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('section-visible');
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
-    );
-    // Observe all sections after render
-    setTimeout(() => {
-      document.querySelectorAll('.features-section, .courses-section, .stats-section, .cta-section, .footer').forEach((el) => {
-        el.classList.add('section-animate');
-        observer.observe(el);
-      });
-    }, 100);
-    return () => observer.disconnect();
+    // Section entrance is handled by the existing CSS `animation: fadeInUp
+    // ... forwards;` rule on .features-section / .courses-section / etc. —
+    // those animations play on page load and finish in their own time, so we
+    // do NOT add a `section-animate` class that would start the section at
+    // `opacity:0` and only reveal it after scroll. Doing so left the page
+    // blank for first-time visitors.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -95,9 +95,20 @@ export default function AllStudentsPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setStudents(data.data.data || []);
-        setTotalPages(data.data.last_page || 1);
-        setTotalCount(data.data.total || 0);
+        // /api/admin/users returns the flat envelope
+        //   { success, message, data: Student[] }
+        // not a Laravel paginator (data.data / data.last_page / data.total).
+        // Reading the paginator shape here silently turned the list into
+        // undefined, so the table always rendered "0 طلاب". We accept
+        // either shape and do client-side pagination from the array.
+        const flat: any[] = Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data?.data?.data)
+            ? data.data.data
+            : [];
+        setStudents(flat);
+        setTotalCount(flat.length);
+        setTotalPages(Math.max(1, Math.ceil(flat.length / PER_PAGE)));
       }
     } catch (error) {
       console.error('Error fetching students:', error);
@@ -359,7 +370,7 @@ export default function AllStudentsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {students.map((student, index) => (
+                  {students.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE).map((student, index) => (
                     <tr key={student.id}>
                       <td>{(currentPage - 1) * PER_PAGE + index + 1}</td>
                       <td>

@@ -49,9 +49,9 @@ export default function StatCard({
           }}>
             {title}
           </p>
-          <h3 style={{ 
-            fontFamily: 'var(--font-display)', 
-            fontSize: '1.75rem', 
+          <h3 style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: '1.75rem',
             fontWeight: 800,
             color: 'var(--text-primary)'
           }}>

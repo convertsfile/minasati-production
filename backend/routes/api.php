@@ -53,11 +53,16 @@ use App\Http\Controllers\Wallet\WalletTopupController;
 | 🔓 PUBLIC ROUTES (No Authentication Required)
 |--------------------------------------------------------------------------
 */
-Route::prefix('auth')->group(function () {
-    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
+$throttleLocal = app()->environment('local', 'testing');
+$throttleReg = $throttleLocal ? '100,1' : '5,1';
+$throttleOtp = $throttleLocal ? '100,1' : '5,1';
+$throttleResend = $throttleLocal ? '100,1' : '3,1';
+
+Route::prefix('auth')->group(function () use ($throttleReg, $throttleOtp, $throttleResend) {
+    Route::post('/register', [AuthController::class, 'register'])->middleware("throttle:{$throttleReg}");
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login_secure');
-    Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->middleware('throttle:5,1');
-    Route::post('/resend-otp', [AuthController::class, 'resendOtp'])->middleware('throttle:3,1');
+    Route::post('/verify-otp', [AuthController::class, 'verifyOtp'])->middleware("throttle:{$throttleOtp}");
+    Route::post('/resend-otp', [AuthController::class, 'resendOtp'])->middleware("throttle:{$throttleResend}");
 });
 
 // 🌍 Public Course Routes

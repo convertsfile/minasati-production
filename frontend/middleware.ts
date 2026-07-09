@@ -6,7 +6,7 @@ export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
   // 1. تحديد المسارات المحمية فقط (لا نتدخل في مسارات الضيوف هنا أبداً)
-  const isProtectedRoute = path.startsWith('/dashboard') || path.startsWith('/admin') || path.startsWith('/courses/');
+  const isProtectedRoute = path.startsWith('/dashboard') || path.startsWith('/admin');
 
   // 2. إذا حاول الدخول لمسار محمي بدون توكن، اطرده لصفحة الدخول
   if (isProtectedRoute && !token) {
@@ -21,5 +21,5 @@ export function middleware(request: NextRequest) {
 
 // تحديد المسارات التي يعمل عليها الميدل وير
 export const config = {
-  matcher: ['/dashboard/:path*', '/admin/:path*', '/courses/:path*'],
+  matcher: ['/dashboard/:path*', '/admin/:path*'],
 };

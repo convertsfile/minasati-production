@@ -1,12 +1,43 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* ============================================
    منصتنا Design System v4.0
    Identity: Premium Educational SaaS
    Primary: Deep Teal #0B4F6C
    ============================================ */
+
+/* Tailwind v4 @theme — exposes CSS variables as utility classes
+   (e.g. bg-primary, text-success, border-gray-100, shadow-xl, rounded-3xl)
+   so that pages using Tailwind utility classes render correctly. */
+@theme {
+  --color-primary: #0B4F6C;
+  --color-primary-light: #1A6B8A;
+  --color-primary-dark: #083A50;
+  --color-secondary: #0B7A8A;
+  --color-secondary-light: #1A9AAA;
+  --color-secondary-dark: #086070;
+  --color-accent: #1BBDD4;
+  --color-accent-light: #4DD4E8;
+  --color-accent-dark: #14A0B8;
+  --color-success: #10B981;
+  --color-success-light: #34D399;
+  --color-success-dark: #059669;
+  --color-warning: #F59E0B;
+  --color-warning-light: #FBBF24;
+  --color-warning-dark: #D97706;
+  --color-error: #EF4444;
+  --color-error-light: #F87171;
+  --color-error-dark: #DC2626;
+  --color-surface: #FFFFFF;
+  --color-background: #F0F7FA;
+  --color-border: #DCE5EB;
+  --color-border-light: #E8F0F4;
+  --color-text-primary: #0A1628;
+  --color-text-secondary: #4A5B6E;
+  --color-text-muted: #8A9BAB;
+  --color-dark-surface: #0D1E2B;
+  --color-dark-bg: #07121A;
+}
 
 /* Core Design Tokens */
 :root {
@@ -335,9 +366,12 @@ a:hover {
 /* ============================================
    Scroll-Triggered Section Animations
    ============================================ */
+/* The .section-animate class used to start the element at opacity:0 and
+   only reveal it after a JS IntersectionObserver added .section-visible.
+   That left first-time visitors staring at a blank page if they didn't
+   scroll. We now use the class as a no-op opt-in for an extra transition
+   when the scroll observer has fired; the element is visible by default. */
 .section-animate {
-  opacity: 0;
-  transform: translateY(30px);
   transition: opacity 0.6s var(--ease-out), transform 0.6s var(--ease-out);
 }
 
@@ -555,10 +589,11 @@ a:hover {
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.7;
   cursor: not-allowed;
   transform: none !important;
   box-shadow: none !important;
+  filter: grayscale(0.35);
 }
 
 /* CTA Buttons - Larger radius for main actions */
@@ -885,6 +920,17 @@ select.input-field {
   padding: var(--space-3xl);
   position: relative;
   overflow: hidden;
+  color: #ffffff;
+}
+
+.split-branding .branding-title,
+.split-branding .branding-subtitle,
+.split-branding .branding-content {
+  color: #ffffff;
+}
+
+.split-branding .branding-subtitle {
+  opacity: 0.92;
 }
 
 .split-form {
@@ -1572,6 +1618,16 @@ select.input-field {
   border-width: 3px;
 }
 
+.spinner-primary {
+  border-color: rgba(11, 79, 108, 0.15);
+  border-top-color: var(--primary);
+}
+
+.spinner-light {
+  border-color: rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+}
+
 /* ============================================
    Video Player
    ============================================ */
@@ -1927,8 +1983,10 @@ select.input-field {
   }
 
   .admin-content {
+    margin-inline-start: 0 !important;
     padding: var(--space-lg);
     padding-top: 4rem;
+    width: 100%;
   }
 
   .grid-cols-2,

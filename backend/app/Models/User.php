@@ -116,7 +116,17 @@ class User extends Authenticatable
     public function hasUnlockedLecture(Lecture $lecture): bool
     {
         $course = $lecture->course;
-        if ($course && !$course->is_strict_order) {
+        if (!$course) {
+            return false;
+        }
+
+        // 🚨 الطالب يجب أن يكون مشتركاً في الكورس للوصول إلى المحاضرات المغلقة
+        $isPurchased = $this->courses()->where('course_id', $course->id)->exists();
+        if (!$isPurchased) {
+            return false;
+        }
+
+        if (!$course->is_strict_order) {
             return true;
         }
 

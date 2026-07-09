@@ -32,18 +32,30 @@ class FileUploadService
 
     public function upload(UploadedFile $file, string $folder = 'general'): ?array
     {
+        $extension = $file->extension() ?: 'png';
+        $filename = Str::uuid()->toString() . '.' . $extension;
+        $key = "{$this->folderToKey($folder)}/{$filename}";
+
+        // 🚀 local / testing environment should bypass B2 entirely for speed and offline reliability
+        if (app()->environment('local', 'testing')) {
+            try {
+                $file->storeAs("public/uploads/{$folder}", $filename);
+                return [
+                    'public_id' => $key,
+                    'url' => asset("storage/uploads/{$folder}/{$filename}"),
+                    'format' => $extension,
+                ];
+            } catch (\Exception $localEx) {
+                Log::error('FileUploadService Local Store failed: ' . $localEx->getMessage());
+                return null;
+            }
+        }
+
         $keyId = config('services.backblaze.key_id');
         if (empty($keyId)) {
             Log::error('Backblaze B2 is not configured in .env');
             return null;
         }
-
-        // 🚀 الأمان: الاعتماد على الـ MimeType الحقيقي للملف بدلاً من الاسم المزور
-        $extension = $file->extension() ?: 'png';
-
-        // 🚀 الأداء: استخدام UUID يمنع تضارب أسماء الملفات تماماً حتى لو رُفعت مليون صورة في نفس الثانية
-        $filename = Str::uuid()->toString() . '.' . $extension;
-        $key = "{$this->folderToKey($folder)}/{$filename}";
 
         try {
             Log::info("Attempting to upload file to B2: {$key}");

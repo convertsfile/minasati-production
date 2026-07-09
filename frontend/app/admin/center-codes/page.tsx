@@ -95,7 +95,16 @@ export default function AdminCenterCodesPage() {
         // /auth/me returns {status:"success", data:UserResource} →
         // UserResource is {success, message, data:User}. Unwrap twice.
         const user = data?.data?.data ?? data?.data ?? data;
-        if (!user?.is_admin) router.push('/');
+        // UserResource uses camelCase (`isAdmin`). The legacy snake_case
+        // field and a `role === 'admin'` string are also accepted as a
+        // defensive fallback. Without the `isAdmin` branch the gate fails
+        // for real admins and silently pushes them to the home page.
+        const isAdminUser =
+          user?.isAdmin === true ||
+          user?.is_admin === true ||
+          user?.role === 'admin' ||
+          user?.role === 'super_admin';
+        if (!isAdminUser) router.push('/');
       } else {
         router.push('/login');
       }

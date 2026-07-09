@@ -182,7 +182,7 @@ export default function StudentExamDetailsPage() {
 
   if (isChecking || loading) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] flex flex-col">
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col" dir="rtl">
         <Navbar />
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className="spinner spinner-primary spinner-lg mb-4" />
@@ -195,11 +195,11 @@ export default function StudentExamDetailsPage() {
   if (!exam) return null;
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col pb-20">
+    <div className="min-h-screen bg-[#f8fafc] flex flex-col pb-20" dir="rtl">
       <Navbar />
 
       {/* 🚀 نظام التنبيهات */}
-      <div className="toast-container" style={{ position: 'fixed', top: '2rem', left: '2rem', zIndex: 1000, transition: 'all 0.3s', opacity: toast.visible ? 1 : 0, pointerEvents: toast.visible ? 'auto' : 'none' }}>
+      <div className="toast-container" style={{ position: 'fixed', top: '2rem', insetInlineStart: '2rem', zIndex: 1000, transition: 'all 0.3s', opacity: toast.visible ? 1 : 0, pointerEvents: toast.visible ? 'auto' : 'none' }}>
         <div className={`toast-content ${toast.type === 'success' ? 'toast-success' : 'toast-error'}`}>
           {toast.type === 'success' ? <CheckCircleIcon size={20} /> : <AlertTriangleIcon size={20} />}
           {toast.message}
@@ -222,14 +222,14 @@ export default function StudentExamDetailsPage() {
       )}
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-8 animate-fade-in">
-        <button onClick={() => router.back()} className="text-sm font-bold text-gray-400 hover:text-primary mb-6 flex items-center gap-1 transition-colors">
+        <button onClick={() => router.back()} className="back-link">
           &rarr; العودة للمتجر
         </button>
 
         {/* كارت معلومات الاختبار */}
         <div className="bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden mb-8 relative">
           {/* شريط زينة علوي */}
-          <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-blue-400"></div>
+          <div className="absolute top-0 inset-x-0 w-full h-2 bg-gradient-to-r from-primary to-blue-400"></div>
           
           <div className="p-8 md:p-10">
             <span className="inline-block px-3 py-1.5 bg-blue-50 text-primary text-xs font-black rounded-lg border border-blue-100 mb-4">
